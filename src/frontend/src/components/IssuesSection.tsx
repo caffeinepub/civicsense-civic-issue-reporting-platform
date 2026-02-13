@@ -1,0 +1,109 @@
+import { useState } from 'react';
+import { useGetAllIssues, useGetMyIssues } from '../hooks/useQueries';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Loader2 } from 'lucide-react';
+import IssueCard from './IssueCard';
+import ReportIssueDialog from './ReportIssueDialog';
+import IssueDetailDialog from './IssueDetailDialog';
+import type { Submission } from '../backend';
+
+export default function IssuesSection() {
+  const { data: allIssues = [], isLoading: allLoading } = useGetAllIssues();
+  const { data: myIssues = [], isLoading: myLoading } = useGetMyIssues();
+  const { identity, loginStatus } = useInternetIdentity();
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<Submission | null>(null);
+
+  const isAuthenticated = !!identity;
+  const isAuthenticating = loginStatus === 'logging-in' || loginStatus === 'initializing';
+
+  return (
+    <section id="issues" className="border-b bg-background py-12">
+      <div className="container px-4">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Civic Issues</h2>
+            <p className="text-muted-foreground">Browse and report issues in your community</p>
+          </div>
+          <Button 
+            onClick={() => setReportDialogOpen(true)} 
+            className="rounded-full bg-gradient-to-r from-civic-orange to-civic-orange-light shadow-civic-orange-glow transition-all duration-300 hover:scale-105 hover:shadow-civic-orange-glow hover:from-civic-orange-light hover:to-civic-orange" 
+            disabled={!isAuthenticated || isAuthenticating}
+          >
+            {isAuthenticating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Authenticating...
+              </>
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Report Issue
+              </>
+            )}
+          </Button>
+        </div>
+
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="all" className="transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-civic-blue data-[state=active]:to-civic-blue-light data-[state=active]:text-white">
+              All Issues ({allIssues.length})
+            </TabsTrigger>
+            <TabsTrigger value="my" className="transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-civic-green data-[state=active]:to-civic-green-light data-[state=active]:text-white">
+              My Reports ({myIssues.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all" className="space-y-4">
+            {allLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-civic-blue" />
+              </div>
+            ) : allIssues.length === 0 ? (
+              <div className="rounded-lg border border-dashed py-12 text-center">
+                <p className="text-muted-foreground">No issues reported yet. Be the first to report one!</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {allIssues.map((issue) => (
+                  <IssueCard key={issue.id} issue={issue} onClick={() => setSelectedIssue(issue)} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="my" className="space-y-4">
+            {myLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-civic-green" />
+              </div>
+            ) : myIssues.length === 0 ? (
+              <div className="rounded-lg border border-dashed py-12 text-center">
+                <p className="text-muted-foreground">You haven't reported any issues yet.</p>
+                <Button
+                  onClick={() => setReportDialogOpen(true)}
+                  variant="outline"
+                  className="mt-4 transition-all duration-300 hover:border-civic-orange hover:text-civic-orange"
+                  disabled={!isAuthenticated || isAuthenticating}
+                >
+                  Report Your First Issue
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {myIssues.map((issue) => (
+                  <IssueCard key={issue.id} issue={issue} onClick={() => setSelectedIssue(issue)} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <ReportIssueDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+      {selectedIssue && <IssueDetailDialog issue={selectedIssue} open={!!selectedIssue} onOpenChange={(open) => !open && setSelectedIssue(null)} />}
+    </section>
+  );
+}
