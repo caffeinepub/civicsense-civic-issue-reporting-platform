@@ -1,0 +1,58 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-23T11:39:53.067Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 1,
+    "implemented": 1,
+    "items": [
+      {
+        "id": "REQ-28",
+        "summary": "Verify that the current UI state (version 35) does not match the original/initial application design, and document the remaining differences between the current implementation and the true initial state that existed before any mockup-matching work began.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/INITIAL_DESIGN_STATE.md",
+          "frontend/CURRENT_VS_INITIAL_DIFFERENCES.md",
+          "frontend/src/index.css",
+          "frontend/src/components/Header.tsx",
+          "frontend/src/components/HeroSection.tsx",
+          "frontend/src/components/CivicSenseAnimation.tsx",
+          "frontend/src/components/ReportIssueDialog.tsx",
+          "frontend/src/pages/HomePage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/INITIAL_DESIGN_STATE.md",
+          "frontend/CURRENT_VS_INITIAL_DIFFERENCES.md",
+          "frontend/src/index.css",
+          "frontend/src/components/Header.tsx",
+          "frontend/src/components/HeroSection.tsx",
+          "frontend/src/components/CivicSenseAnimation.tsx",
+          "frontend/src/components/ReportIssueDialog.tsx",
+          "frontend/src/pages/HomePage.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/CURRENT_VS_INITIAL_DIFFERENCES.md",
+    "frontend/INITIAL_DESIGN_STATE.md",
+    "frontend/src/components/CivicSenseAnimation.tsx",
+    "frontend/src/components/Header.tsx",
+    "frontend/src/components/HeroSection.tsx",
+    "frontend/src/components/ReportIssueDialog.tsx",
+    "frontend/src/index.css",
+    "frontend/src/pages/HomePage.tsx",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

@@ -1,0 +1,249 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 17,
+  "summary": "Restore the UI to the original/initial design (undo all mockup-matching restyling and revert to the app's starting UI state).",
+  "architectural_notes": [
+    "User has requested a full UI restore to the original/initial design state (before any mockup-matching restyle work)."
+  ],
+  "known_issues": [
+    "Current UI (v35) does not match the original/initial design; further restoration required"
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-update-the-overall-visual-theme-to-match-the-uploaded-ui-mockups-bright-civic-municipal-look-with-light-backgrounds-rounded-cards-subtle-shadows-illustrated-cityscape-hero-and-clear-section-separation-keep-all-user-facing-text-in-english",
+      "title": "Update the overall visual theme to match the uploaded UI mockups: bright civic/municipal look with light backgrounds, rounded cards, subtle shadows, illustrated cityscape hero, and clear section separation. Keep all user-facing text in English.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restyle-the-header-to-visually-match-the-mockups-left-aligned-civicsense-branding-centered-nav-links-for-public-view-home-about-and-a-right-aligned-primary-action-button-labeled-login-register-when-logged-out-when-logged-in-show-dashboard-and-logout-on-the-right-with-the-user-avatar-dropdown",
+      "title": "Restyle the Header to visually match the mockups: left-aligned CivicSense branding, centered nav links for public view (Home, About), and a right-aligned primary action button labeled \"Login / Register\" when logged out. When logged in, show \"Dashboard\" and \"Logout\" on the right with the user avatar/dropdown.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-adjust-the-unauthenticated-landing-layout-homepage-sections-to-match-the-mockups-hero-area-with-an-illustrated-cityscape-background-hero-title-subtitle-similar-in-tone-to-the-mockup-and-a-centered-civic-impact-so-far-stats-strip-displayed-prominently-over-within-the-hero-area",
+      "title": "Adjust the unauthenticated landing layout (HomePage + sections) to match the mockups: hero area with an illustrated cityscape background, hero title/subtitle similar in tone to the mockup, and a centered \"Civic Impact So Far\" stats strip displayed prominently over/within the hero area.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restyle-livestatssection-to-visually-match-the-mockup-stats-component-a-compact-horizontally-arranged-card-strip-with-multiple-colored-tiles-e-g-total-issues-category-breakdown-tiles-the-data-should-be-derived-from-existing-issues-data-no-backend-changes",
+      "title": "Restyle LiveStatsSection to visually match the mockup stats component: a compact, horizontally arranged card/strip with multiple colored tiles (e.g., Total Issues + category breakdown tiles). The data should be derived from existing issues data (no backend changes).",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-how-it-works-feature-callouts-on-the-landing-page-to-match-the-mockup-s-three-feature-cards-three-horizontally-aligned-cards-with-an-icon-in-a-circular-badge-and-headings-similar-to-report-problems-track-progress-make-a-change-with-brief-descriptions-and-consistent-spacing-shadows",
+      "title": "Update the 'How it works' / feature callouts on the landing page to match the mockup’s three feature cards: three horizontally aligned cards with an icon in a circular badge and headings similar to \"Report Problems\", \"Track Progress\", \"Make a Change\" with brief descriptions and consistent spacing/shadows.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restyle-the-report-issue-ui-to-match-the-mockup-form-layout-and-visual-hierarchy-clear-page-dialog-title-report-a-civic-issue-a-clean-form-with-section-spacing-and-a-right-side-reporting-tips-panel-on-desktop-include-an-illustrated-trash-garbage-graphic-anchored-to-the-bottom-right-area-of-the-form-layout",
+      "title": "Restyle the Report Issue UI to match the mockup form layout and visual hierarchy: clear page/dialog title \"Report a Civic Issue\", a clean form with section spacing, and a right-side \"Reporting Tips\" panel on desktop. Include an illustrated trash/garbage graphic anchored to the bottom-right area of the form layout.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-and-render-new-static-illustrated-assets-required-to-match-the-mockups-store-generated-images-in-frontend-public-assets-generated-and-reference-them-directly-from-the-frontend-do-not-serve-images-through-the-backend",
+      "title": "Add and render new static illustrated assets required to match the mockups. Store generated images in frontend/public/assets/generated and reference them directly from the frontend (do not serve images through the backend).",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-global-theme-color-token-styling-so-all-text-is-visible-and-has-sufficient-contrast-across-the-app-including-light-and-dark-mode-specifically-correct-any-invalid-css-color-definitions-caused-by-combining-oklch-css-variables-with-additional-oklch-wrappers-in-custom-utility-classes-and-tailwind-theme-mappings-so-that-classes-like-text-civic-blue-bg-civic-blue-and-related-border-shadow-utilities-render-correctly-instead-of-producing-invisible-text",
+      "title": "Fix the global theme/color token styling so all text is visible and has sufficient contrast across the app (including light and dark mode). Specifically, correct any invalid CSS color definitions caused by combining OKLCH CSS variables with additional `oklch()` wrappers in custom utility classes and Tailwind theme mappings, so that classes like `text-civic-blue`, `bg-civic-blue`, and related border/shadow utilities render correctly instead of producing invisible text.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-the-blue-background-styling-from-the-unauthenticated-landing-hero-area-including-any-blue-gradient-overlays-and-replace-it-with-a-light-neutral-background-that-preserves-readability-over-the-existing-cityscape-image",
+      "title": "Remove the blue background styling from the unauthenticated landing hero area (including any blue gradient overlays) and replace it with a light/neutral background that preserves readability over the existing cityscape image.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-center-align-the-user-facing-text-in-the-landing-unauthenticated-experience-wherever-applicable-hero-headings-subtitles-and-key-callouts-without-disrupting-intentional-layout-areas-like-the-header-navigation-structure",
+      "title": "Center-align the user-facing text in the landing/unauthenticated experience wherever applicable (hero headings, subtitles, and key callouts), without disrupting intentional layout areas like the Header navigation structure.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-login-register-button-so-it-reliably-opens-the-login-flow-and-allows-successful-completion-of-authentication-from-both-the-header-and-the-hero-cta",
+      "title": "Fix the 'Login / Register' button so it reliably opens the login flow and allows successful completion of authentication from both the Header and the Hero CTA.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-lightweight-interactivity-improvements-to-make-the-landing-experience-more-engaging-without-adding-new-product-features-e-g-subtle-hover-press-states-small-entrance-animations-and-or-a-gentle-scroll-cue-in-the-hero",
+      "title": "Add lightweight interactivity improvements to make the landing experience more engaging without adding new product features (e.g., subtle hover/press states, small entrance animations, and/or a gentle scroll cue in the hero).",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-login-register-action-so-it-reliably-opens-the-loginselectionmodal-and-completes-the-authentication-flow-from-all-entry-points-header-desktop-button-header-mobile-sheet-button-and-herosection-cta-including-after-initial-page-load-and-after-route-scroll-interactions",
+      "title": "Fix the Login / Register action so it reliably opens the LoginSelectionModal and completes the authentication flow from all entry points (Header desktop button, Header mobile sheet button, and HeroSection CTA), including after initial page load and after route/scroll interactions.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-correct-alignment-layout-issues-on-the-unauthenticated-home-page-so-that-landing-page-text-blocks-hero-heading-subtitle-key-callouts-and-section-headings-descriptions-are-consistently-aligned-as-intended-across-common-breakpoints-mobile-tablet-desktop-without-breaking-the-header-navigation-layout",
+      "title": "Correct alignment/layout issues on the unauthenticated Home page so that landing page text blocks (hero heading/subtitle, key callouts, and section headings/descriptions) are consistently aligned as intended across common breakpoints (mobile, tablet, desktop) without breaking the Header navigation layout.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-revert-the-unauthenticated-landing-experience-to-the-previous-ui-style-by-removing-the-recent-mockup-matching-hero-landing-restyling-including-cityscape-hero-treatment-heavy-gradients-centered-hero-composition-and-the-new-feature-card-styling-and-restoring-the-prior-layout-and-visual-hierarchy-for-the-home-page-s-unauthenticated-view",
+      "title": "Revert the unauthenticated landing experience to the previous UI style by removing the recent mockup-matching hero/landing restyling (including cityscape hero treatment, heavy gradients, centered hero composition, and the new feature-card styling) and restoring the prior layout and visual hierarchy for the Home page’s unauthenticated view.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-revert-the-header-component-ui-to-the-previous-styling-and-structure-undo-the-mockup-matching-header-restyle-while-keeping-authentication-actions-available-and-functional",
+      "title": "Revert the Header component UI to the previous styling and structure (undo the mockup-matching header restyle), while keeping authentication actions available and functional.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-revert-the-report-issue-ui-reportissuedialog-and-related-layout-styling-to-the-previous-ui-style-by-removing-the-recent-mockup-matching-restyle-e-g-the-new-two-column-layout-tips-panel-styling-enhanced-visual-treatments-while-preserving-all-existing-form-fields-and-submission-behavior",
+      "title": "Revert the “Report Issue” UI (ReportIssueDialog and related layout/styling) to the previous UI style by removing the recent mockup-matching restyle (e.g., the new two-column layout/tips panel styling, enhanced visual treatments) while preserving all existing form fields and submission behavior.",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-rollback-the-global-restyle-theme-layer-introduced-for-the-mockup-matching-ui-custom-civic-palette-glow-gradient-heavy-utilities-and-any-restyle-only-animation-utilities-and-restore-the-previous-app-theme-so-that-default-text-background-colors-render-consistently-across-the-app",
+      "title": "Remove/rollback the global restyle theme layer introduced for the mockup-matching UI (custom civic palette/glow/gradient-heavy utilities and any restyle-only animation utilities), and restore the previous app theme so that default text/background colors render consistently across the app.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-retry-generating-and-deploying-the-current-app-build-ensuring-the-deployment-succeeds-without-build-time-or-runtime-errors-and-perform-a-basic-post-deploy-ui-smoke-check-focused-on-the-known-regressions-text-visibility-contrast-login-register-action-opening-the-login-modal-and-unauthenticated-home-layout-alignment",
+      "title": "Retry generating and deploying the current app build, ensuring the deployment succeeds without build-time or runtime errors, and perform a basic post-deploy UI smoke check focused on the known regressions (text visibility/contrast, Login/Register action opening the login modal, and unauthenticated home layout alignment).",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-header-component-to-the-original-ui-design-by-removing-all-mockup-matching-visual-styling-centered-navigation-civic-branding-treatment-enhanced-button-styles-while-preserving-all-authentication-functionality-login-register-actions-user-menu-mobile-menu-behavior",
+      "title": "Restore the Header component to the original UI design by removing all mockup-matching visual styling (centered navigation, civic branding treatment, enhanced button styles) while preserving all authentication functionality (login/register actions, user menu, mobile menu behavior)",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-unauthenticated-landing-page-homepage-herosection-to-the-original-ui-design-by-removing-all-mockup-matching-styling-including-the-cityscape-hero-treatment-centered-hero-composition-blue-gradient-backgrounds-and-enhanced-feature-card-layouts",
+      "title": "Restore the unauthenticated landing page (HomePage, HeroSection) to the original UI design by removing all mockup-matching styling including the cityscape hero treatment, centered hero composition, blue/gradient backgrounds, and enhanced feature card layouts",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-report-issue-dialog-reportissuedialog-to-the-original-ui-design-by-removing-the-mockup-matching-two-column-layout-tips-panel-and-enhanced-visual-treatments-while-preserving-all-form-fields-and-submission-functionality",
+      "title": "Restore the Report Issue dialog (ReportIssueDialog) to the original UI design by removing the mockup-matching two-column layout, tips panel, and enhanced visual treatments while preserving all form fields and submission functionality",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-all-mockup-matching-animation-utilities-and-enhanced-interaction-styles-entrance-animations-hover-states-scroll-cues-introduced-for-the-restyle-returning-to-the-original-interaction-patterns",
+      "title": "Remove all mockup-matching animation utilities and enhanced interaction styles (entrance animations, hover states, scroll cues) introduced for the restyle, returning to the original interaction patterns",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-all-generated-illustrated-assets-added-for-the-mockup-matching-ui-cityscape-backgrounds-illustrated-icons-trash-garbage-graphics-from-frontend-public-assets-generated-and-remove-their-references-from-frontend-components",
+      "title": "Remove all generated illustrated assets added for the mockup-matching UI (cityscape backgrounds, illustrated icons, trash/garbage graphics) from frontend/public/assets/generated and remove their references from frontend components",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-livestatssection-to-its-original-implementation-currently-an-empty-component",
+      "title": "Restore LiveStatsSection to its original implementation (currently an empty component)",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-verify-that-the-current-ui-state-version-35-does-not-match-the-original-initial-application-design-and-document-the-remaining-differences-between-the-current-implementation-and-the-true-initial-state-that-existed-before-any-mockup-matching-work-began",
+      "title": "Verify that the current UI state (version 35) does not match the original/initial application design, and document the remaining differences between the current implementation and the true initial state that existed before any mockup-matching work began.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Restore the UI to the original/initial design (undo all mockup-matching restyling and revert to the app's starting UI state)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Restore the CivicSenseAnimation component to its original design by removing mockup-matching feature card styling (circular icon badges, enhanced spacing, shadows) and returning to the initial layout",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Restore the global theme configuration by removing all mockup-matching custom color utilities (civic-blue, civic-green, civic-orange, civic-purple, civic-red palette and any glow/gradient utilities) from frontend/tailwind.config.js and frontend/src/index.css, returning to the original theme tokens",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Restyle CivicSense UI to match provided mockups (landing + report issue form)",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

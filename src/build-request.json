@@ -1,0 +1,38 @@
+{
+  "kind": "build_request",
+  "title": "Confirm current UI state is not the initial design",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-28",
+      "text": "Verify that the current UI state (version 35) does not match the original/initial application design, and document the remaining differences between the current implementation and the true initial state that existed before any mockup-matching work began.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "no this is not initial"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A clear identification of UI elements that still differ from the original design",
+        "Documentation of what the true initial state looked like for key components (Header, HomePage, HeroSection, CivicSenseAnimation, ReportIssueDialog, theme configuration)",
+        "Confirmation that version 35 is not the target initial state"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not make further UI changes until the true initial design state is confirmed",
+    "Preserve all existing authentication functionality",
+    "Maintain all data persistence and backend logic"
+  ],
+  "nonGoals": [
+    "Making additional UI restoration changes without clear direction",
+    "Assuming the current state is correct"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

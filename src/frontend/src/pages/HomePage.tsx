@@ -1,8 +1,20 @@
+// INITIAL DESIGN DOCUMENTATION:
+// The initial HomePage had two distinct views based on authentication state:
+// - Unauthenticated: HeroSection + CivicSenseAnimation (about section with id="about")
+// - Authenticated: IssuesSection + MapSection + DashboardSection (for municipal staff only)
+// - Auto-scroll behavior: Municipal staff are scrolled to dashboard after login
+// - Background: Standard bg-background color throughout
+// - No stats strip or additional hero imagery
+// - LiveStatsSection component existed but returned null (disabled)
+//
+// CURRENT VERSION 35 STATE:
+// This implementation matches the initial design. Conditional rendering based on auth state,
+// with proper section ordering and auto-scroll functionality for municipal staff.
+
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useGetCallerUserProfile, useIsCallerAdmin } from '../hooks/useQueries';
 import { useEffect } from 'react';
 import HeroSection from '../components/HeroSection';
-import LiveStatsSection from '../components/LiveStatsSection';
 import CivicSenseAnimation from '../components/CivicSenseAnimation';
 import IssuesSection from '../components/IssuesSection';
 import MapSection from '../components/MapSection';
@@ -16,18 +28,15 @@ export default function HomePage() {
   const isAuthenticated = !!identity;
   const isMunicipalStaff = userProfile?.isMunicipalStaff || isAdmin;
 
-  // Auto-scroll to dashboard for municipal operators after login
   useEffect(() => {
     if (isAuthenticated && userProfile && isMunicipalStaff) {
       const shouldScroll = sessionStorage.getItem('scrollToDashboard');
       const intendedRole = sessionStorage.getItem('intendedRole');
       
       if (shouldScroll === 'true' && intendedRole === 'municipal') {
-        // Clear the flags immediately to prevent repeated scrolling
         sessionStorage.removeItem('scrollToDashboard');
         sessionStorage.removeItem('intendedRole');
         
-        // Scroll to dashboard after a short delay to ensure DOM is ready
         setTimeout(() => {
           const dashboardSection = document.getElementById('dashboard');
           if (dashboardSection) {
@@ -38,19 +47,19 @@ export default function HomePage() {
     }
   }, [isAuthenticated, userProfile, isMunicipalStaff]);
 
-  // Show hero for non-authenticated users or during profile loading
   if (!isAuthenticated || profileLoading || !userProfile) {
     return (
-      <>
-        <LiveStatsSection />
+      <div className="min-h-screen bg-background">
         <HeroSection />
-        <CivicSenseAnimation />
-      </>
+        <div id="about" className="bg-background">
+          <CivicSenseAnimation />
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-0">
+    <div className="min-h-screen space-y-0 bg-background">
       <IssuesSection />
       <MapSection />
       {isMunicipalStaff && <DashboardSection />}

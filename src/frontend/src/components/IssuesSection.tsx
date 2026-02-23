@@ -29,7 +29,6 @@ export default function IssuesSection() {
           </div>
           <Button 
             onClick={() => setReportDialogOpen(true)} 
-            className="rounded-full bg-gradient-to-r from-civic-orange to-civic-orange-light shadow-civic-orange-glow transition-all duration-300 hover:scale-105 hover:shadow-civic-orange-glow hover:from-civic-orange-light hover:to-civic-orange" 
             disabled={!isAuthenticated || isAuthenticating}
           >
             {isAuthenticating ? (
@@ -48,10 +47,10 @@ export default function IssuesSection() {
 
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="mb-6">
-            <TabsTrigger value="all" className="transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-civic-blue data-[state=active]:to-civic-blue-light data-[state=active]:text-white">
+            <TabsTrigger value="all">
               All Issues ({allIssues.length})
             </TabsTrigger>
-            <TabsTrigger value="my" className="transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-civic-green data-[state=active]:to-civic-green-light data-[state=active]:text-white">
+            <TabsTrigger value="my">
               My Reports ({myIssues.length})
             </TabsTrigger>
           </TabsList>
@@ -59,7 +58,7 @@ export default function IssuesSection() {
           <TabsContent value="all" className="space-y-4">
             {allLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-civic-blue" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : allIssues.length === 0 ? (
               <div className="rounded-lg border border-dashed py-12 text-center">
@@ -77,7 +76,7 @@ export default function IssuesSection() {
           <TabsContent value="my" className="space-y-4">
             {myLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-civic-green" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : myIssues.length === 0 ? (
               <div className="rounded-lg border border-dashed py-12 text-center">
@@ -85,7 +84,7 @@ export default function IssuesSection() {
                 <Button
                   onClick={() => setReportDialogOpen(true)}
                   variant="outline"
-                  className="mt-4 transition-all duration-300 hover:border-civic-orange hover:text-civic-orange"
+                  className="mt-4"
                   disabled={!isAuthenticated || isAuthenticating}
                 >
                   Report Your First Issue

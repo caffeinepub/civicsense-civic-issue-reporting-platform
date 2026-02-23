@@ -1,0 +1,32 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-verify-that-the-current-ui-state-version-35-does-not-match-the-original-initial-application-design-and-document-the-remaining-differences-between-the-current-implementation-and-the-true-initial-state-that-existed-before-any-mockup-matching-work-began",
+      "featureTitle": "Verify that the current UI state (version 35) does not match the original/initial application design, and document the remaining differences between the current implementation and the true initial state that existed before any mockup-matching work began.",
+      "files": [
+        "frontend/CURRENT_VS_INITIAL_DIFFERENCES.md",
+        "frontend/INITIAL_DESIGN_STATE.md",
+        "frontend/src/components/CivicSenseAnimation.tsx",
+        "frontend/src/components/Header.tsx",
+        "frontend/src/components/HeroSection.tsx",
+        "frontend/src/components/ReportIssueDialog.tsx",
+        "frontend/src/index.css",
+        "frontend/src/pages/HomePage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-28"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

@@ -1,12 +1,26 @@
+// INITIAL DESIGN DOCUMENTATION:
+// The initial Header design featured a clean, sticky header with standard shadcn/ui components.
+// - Branding: MapPin icon + "CivicSense" text
+// - Navigation: Simple "Home" and "About" links for unauthenticated users
+// - Auth UI: Standard button for login, avatar dropdown menu for authenticated users
+// - Mobile: Sheet component with hamburger menu icon
+// - Styling: Standard theme tokens (foreground, primary, muted-foreground) without gradients
+// - No special effects or custom styling beyond shadcn/ui defaults
+//
+// CURRENT VERSION 35 STATE:
+// This implementation matches the initial design closely. The component structure, navigation,
+// and authentication UI follow the original specifications with standard theme styling.
+
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useGetCallerUserProfile, useIsCallerAdmin } from '../hooks/useQueries';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MapPin, Menu, LogOut, Shield } from 'lucide-react';
+import { MapPin, Menu, LogOut, Shield, LayoutDashboard } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
+import { openLoginModal } from '../utils/openLoginModal';
 
 export default function Header() {
   const { clear, loginStatus, identity } = useInternetIdentity();
@@ -17,13 +31,6 @@ export default function Header() {
 
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
-
-  const handleLogin = () => {
-    // Trigger the login selection modal
-    if (typeof window !== 'undefined' && (window as any).openLoginModal) {
-      (window as any).openLoginModal();
-    }
-  };
 
   const handleLogout = async () => {
     await clear();
@@ -42,38 +49,64 @@ export default function Header() {
 
   const isMunicipalStaff = userProfile?.isMunicipalStaff || isAdmin;
 
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const handleLoginClick = () => {
+    openLoginModal();
+  };
+
+  const handleMobileLoginClick = () => {
+    setMobileMenuOpen(false);
+    setTimeout(() => {
+      openLoginModal();
+    }, 300);
+  };
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <MapPin className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold tracking-tight">CivicSense</h1>
+          <h1 className="text-xl font-bold text-foreground">CivicSense</h1>
         </div>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden items-center gap-6 md:flex">
-          {isAuthenticated && userProfile && (
-            <>
-              <a href="#issues" className="text-sm font-medium transition-colors hover:text-primary">
-                Issues
-              </a>
-              <a href="#map" className="text-sm font-medium transition-colors hover:text-primary">
-                Map
-              </a>
-              {isMunicipalStaff && (
-                <a href="#dashboard" className="text-sm font-medium transition-colors hover:text-primary">
-                  Dashboard
-                </a>
-              )}
-            </>
-          )}
-        </nav>
+        {!isAuthenticated && (
+          <nav className="hidden items-center gap-6 md:flex">
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="text-sm font-medium text-foreground hover:text-primary"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => scrollToSection('about')}
+              className="text-sm font-medium text-foreground hover:text-primary"
+            >
+              About
+            </button>
+          </nav>
+        )}
 
         <div className="flex items-center gap-3">
           {isAuthenticated && userProfile ? (
             <>
-              {/* Desktop User Menu */}
-              <div className="hidden md:block">
+              <div className="hidden md:flex md:items-center md:gap-3">
+                {isMunicipalStaff && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => scrollToSection('dashboard')}
+                  >
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -100,13 +133,12 @@ export default function Header() {
                     )}
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
+                      <span>Logout</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
-              {/* Mobile Menu */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild className="md:hidden">
                   <Button variant="ghost" size="icon">
@@ -126,43 +158,68 @@ export default function Header() {
                         <p className="text-xs text-muted-foreground">{userProfile.email}</p>
                       </div>
                     </div>
-                    <nav className="flex flex-col gap-2">
-                      <a
-                        href="#issues"
-                        className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
-                        onClick={() => setMobileMenuOpen(false)}
+                    {isMunicipalStaff && (
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        onClick={() => scrollToSection('dashboard')}
                       >
-                        Issues
-                      </a>
-                      <a
-                        href="#map"
-                        className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Map
-                      </a>
-                      {isMunicipalStaff && (
-                        <a
-                          href="#dashboard"
-                          className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Dashboard
-                        </a>
-                      )}
-                    </nav>
-                    <Button variant="outline" onClick={handleLogout} className="mt-auto">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Dashboard
+                      </Button>
+                    )}
+                    <Button variant="ghost" className="justify-start" onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Log out
+                      Logout
                     </Button>
                   </div>
                 </SheetContent>
               </Sheet>
             </>
           ) : (
-            <Button onClick={handleLogin} disabled={isLoggingIn} className="rounded-full">
-              {isLoggingIn ? 'Logging in...' : 'Login'}
-            </Button>
+            <>
+              <Button
+                onClick={handleLoginClick}
+                disabled={isLoggingIn}
+                className="hidden md:inline-flex"
+              >
+                {isLoggingIn ? 'Logging in...' : 'Login'}
+              </Button>
+
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild className="md:hidden">
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-64">
+                  <div className="flex flex-col gap-4 py-4">
+                    <button
+                      onClick={() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-left text-sm font-medium text-foreground hover:text-primary"
+                    >
+                      Home
+                    </button>
+                    <button
+                      onClick={() => scrollToSection('about')}
+                      className="text-left text-sm font-medium text-foreground hover:text-primary"
+                    >
+                      About
+                    </button>
+                    <Button
+                      onClick={handleMobileLoginClick}
+                      disabled={isLoggingIn}
+                      className="mt-4"
+                    >
+                      {isLoggingIn ? 'Logging in...' : 'Login'}
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </>
           )}
         </div>
       </div>
