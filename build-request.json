@@ -1,0 +1,60 @@
+{
+  "kind": "build_request",
+  "title": "Fix HomePage incorrectly rendering as PublicPortal for authenticated users",
+  "projectName": "CivicSense",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Fix the conditional rendering logic in HomePage.tsx so that authenticated municipal staff/admin users are shown MunicipalPortal and authenticated citizens are shown the citizen-specific view, while only unauthenticated users see PublicPortal. The current bug causes authenticated users to be served the PublicPortal instead of their role-appropriate portal.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "now the issue the homepage becomes public portal"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When a municipal staff or admin user is authenticated, HomePage renders MunicipalPortal, not PublicPortal.",
+        "When an unauthenticated user visits the homepage, HomePage renders PublicPortal.",
+        "When an authenticated citizen visits the homepage, HomePage renders the citizen-facing view (PublicPortal or a citizen-specific portal as intended), not the municipal dashboard.",
+        "The sessionStorage guard that prevents incorrect portal flashes during auth loading still works correctly — no flicker to PublicPortal during initial auth resolution for authenticated users.",
+        "Roles derived from sessionStorage and/or backend login response are correctly read and used to gate the portal selection in HomePage.tsx."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Audit the role propagation flow in LoginSelectionModal.tsx: ensure that after a successful backend login call, the user's role (citizen vs. municipal staff) is correctly written to sessionStorage and that HomePage.tsx reads the same sessionStorage key to determine which portal to render.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "now the issue the homepage becomes public portal"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After login as municipal staff, the correct role value is stored in sessionStorage.",
+        "After login as a citizen, the correct role value is stored in sessionStorage.",
+        "HomePage.tsx reads the sessionStorage role value using the same key that LoginSelectionModal.tsx writes to.",
+        "No stale or mismatched sessionStorage values from a previous session cause the wrong portal to render."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
+    "Preserve the existing sessionStorage-based flash-prevention guard in HomePage.tsx; only fix the role-check logic."
+  ],
+  "nonGoals": [
+    "Redesigning the PublicPortal or MunicipalPortal UI.",
+    "Changes to backend role/auth logic unless directly required to fix the portal selection bug.",
+    "Adding new portal types or user roles."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

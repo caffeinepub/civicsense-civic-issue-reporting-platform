@@ -1,0 +1,47 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Fix HomePage incorrectly rendering as PublicPortal for authenticated users",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Fix the conditional rendering logic in HomePage.tsx so that authenticated municipal staff/admin users are shown MunicipalPortal and authenticated citizens are shown the citizen-specific view, while only unauthenticated users see PublicPortal.",
+      "acceptanceCriteria": [
+        "When a municipal staff or admin user is authenticated, HomePage renders MunicipalPortal, not PublicPortal.",
+        "When an unauthenticated user visits the homepage, HomePage renders PublicPortal.",
+        "When an authenticated citizen visits the homepage, HomePage renders the citizen-facing view (PublicPortal or a citizen-specific portal as intended), not the municipal dashboard.",
+        "The sessionStorage guard that prevents incorrect portal flashes during auth loading still works correctly — no flicker to PublicPortal during initial auth resolution for authenticated users.",
+        "Roles derived from sessionStorage and/or backend login response are correctly read and used to gate the portal selection in HomePage.tsx."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/HomePage.tsx",
+          "operation": "modify",
+          "description": "Fix the conditional rendering logic to correctly check the user's role from sessionStorage before deciding which portal to render. Ensure that the sessionStorage key used for the role check matches exactly what LoginSelectionModal.tsx writes. The logic should: (1) read the sessionStorage role value (e.g., 'isMunicipalOperator' or 'userRole'), (2) render MunicipalPortal if the user is authenticated AND has municipal/admin role, (3) render PublicPortal for unauthenticated users or authenticated citizens, and (4) preserve the existing sessionStorage-based flash-prevention guard that checks for login completion before rendering to avoid showing the wrong portal during auth loading."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Audit the role propagation flow in LoginSelectionModal.tsx: ensure that after a successful backend login call, the user's role (citizen vs. municipal staff) is correctly written to sessionStorage and that HomePage.tsx reads the same sessionStorage key.",
+      "acceptanceCriteria": [
+        "After login as municipal staff, the correct role value is stored in sessionStorage.",
+        "After login as a citizen, the correct role value is stored in sessionStorage.",
+        "HomePage.tsx reads the sessionStorage role value using the same key that LoginSelectionModal.tsx writes to.",
+        "No stale or mismatched sessionStorage values from a previous session cause the wrong portal to render."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/LoginSelectionModal.tsx",
+          "operation": "modify",
+          "description": "Audit and fix the role propagation logic after successful backend login. Ensure that the backend LoginResult success response (which includes 'isMunicipalOperator' boolean) is correctly written to sessionStorage using a consistent key (e.g., 'isMunicipalOperator' or 'userRole'). Verify that the sessionStorage write happens immediately after receiving the backend response and before any navigation or portal rendering. If the current implementation writes the role to a different key or in a different format than HomePage.tsx expects, align them to use the same key and value format. Also ensure that logout or session clearing removes this sessionStorage value to prevent stale data from affecting the next login."
+        },
+        {
+          "path": "frontend/src/hooks/useInternetIdentity.ts",
+          "operation": "modify",
+          "description": "Ensure that the logout/clear function removes the role-related sessionStorage key(s) that LoginSelectionModal.tsx writes and HomePage.tsx reads. This prevents stale role data from a previous session from causing the wrong portal to render after a fresh login. Verify that all sessionStorage keys used for role/auth state are cleared when the user logs out."
+        }
+      ]
+    }
+  ]
+}

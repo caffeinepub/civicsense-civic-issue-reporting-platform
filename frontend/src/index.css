@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Navy blue primary for headers and dark text */
+    --navy: 217 45% 31%;
+    /* Bright orange/coral accent */
+    --orange: 16 100% 65%;
+    /* Soft beige/cream background */
+    --beige: 30 40% 96%;
+
+    /* Updated color system */
+    --background: 30 40% 96%;
+    --foreground: 217 45% 31%;
+    --card: 0 0% 100%;
+    --card-foreground: 217 45% 31%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 217 45% 31%;
+    /* Orange/coral primary color */
+    --primary: 16 100% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 217 45% 31%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 217 45% 31%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 16 100% 65%;
+    --radius: 0.5rem;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+  }
+
+  .dark {
+    --background: 217 45% 15%;
+    --foreground: 0 0% 98%;
+    --card: 217 45% 18%;
+    --card-foreground: 0 0% 98%;
+    --popover: 217 45% 15%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 16 100% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 30% 25%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 217 30% 25%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 217 30% 25%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 217 30% 25%;
+    --input: 217 30% 25%;
+    --ring: 16 100% 65%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 98%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
