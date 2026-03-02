@@ -1,11 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the bug in `HomePage.tsx` where authenticated users (municipal staff/admin and citizens) are incorrectly shown `PublicPortal` instead of their role-appropriate portal.
+**Goal:** Auto-fetch the user's location when the Report Issue dialog opens, and hide the Report Issue feature from the Municipal portal.
 
 **Planned changes:**
-- Fix the conditional rendering logic in `HomePage.tsx` so that authenticated municipal staff/admin users see `MunicipalPortal`, authenticated citizens see the citizen-facing view, and only unauthenticated users see `PublicPortal`.
-- Audit `LoginSelectionModal.tsx` to ensure the user's role is correctly written to `sessionStorage` after a successful login, and that `HomePage.tsx` reads the same `sessionStorage` key for portal selection.
-- Ensure the existing sessionStorage flash-prevention guard continues to work correctly during auth loading, with no flicker to `PublicPortal` for authenticated users.
+- In `ReportIssueDialog.tsx`, trigger the browser Geolocation API automatically when the dialog opens to pre-fill the location fields.
+- If geolocation succeeds, populate the latitude/longitude (and address if reverse-geocoded) without user interaction.
+- If geolocation is denied or fails, keep the location field editable and show an inline error message.
+- Conditionally hide the Report Issue button and `ReportIssueDialog` in the Municipal (operator) portal view based on the user's role.
+- Ensure the Report Issue entry point remains visible and functional for citizens and unauthenticated public users.
 
-**User-visible outcome:** After logging in, municipal staff/admin users are taken to `MunicipalPortal` and citizens see their appropriate view, with no incorrect redirect to `PublicPortal`.
+**User-visible outcome:** Citizens see their location auto-filled when opening the Report Issue dialog, while municipal operators no longer see or can access the Report Issue button or dialog.

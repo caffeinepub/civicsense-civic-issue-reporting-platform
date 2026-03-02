@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MapPin, Clock, ThumbsUp, ThumbsDown, MessageSquare, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, User, ThumbsUp, ThumbsDown, MessageSquare, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { Submission } from '../backend';
 import { Status, Category, Variant_upvote_downvote } from '../backend';
 import { useGetComments, useAddComment, useGetVoteCount, useAddVote, useRemoveVote, useGetStatusHistory } from '../hooks/useQueries';
@@ -18,23 +18,26 @@ interface IssueDetailDialogProps {
 }
 
 const statusColors: Record<Status, string> = {
-  [Status.pending]: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  [Status.open]: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
   [Status.inProgress]: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
   [Status.resolved]: 'bg-green-500/10 text-green-700 dark:text-green-400',
+  [Status.reopened]: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
+  [Status.closed]: 'bg-gray-500/10 text-gray-700 dark:text-gray-400',
 };
 
 const statusLabels: Record<Status, string> = {
-  [Status.pending]: 'Pending',
+  [Status.open]: 'Open',
   [Status.inProgress]: 'In Progress',
   [Status.resolved]: 'Resolved',
+  [Status.reopened]: 'Reopened',
+  [Status.closed]: 'Closed',
 };
 
 const categoryLabels: Record<Category, string> = {
-  [Category.garbage]: 'Garbage',
-  [Category.traffic]: 'Traffic',
-  [Category.streetlight]: 'Streetlight',
   [Category.potholes]: 'Pothole',
-  [Category.noise]: 'Noise',
+  [Category.streetlights]: 'Streetlight',
+  [Category.waste]: 'Waste',
+  [Category.other]: 'Other',
 };
 
 export default function IssueDetailDialog({ issue, open, onOpenChange }: IssueDetailDialogProps) {
@@ -49,24 +52,27 @@ export default function IssueDetailDialog({ issue, open, onOpenChange }: IssueDe
   const [commentText, setCommentText] = useState('');
   const [hasVoted, setHasVoted] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const [imageUrls] = useState<string[]>(() =>
-    issue.attachments && issue.attachments.length > 0
-      ? issue.attachments.map((blob) => blob.getDirectURL())
-      : []
-  );
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [loadingImages, setLoadingImages] = useState(true);
 
   const upvotes = Number(voteCount?.upvotes || 0);
   const downvotes = Number(voteCount?.downvotes || 0);
 
+  // Load image URLs when dialog opens
+  useState(() => {
+    if (issue.attachments && issue.attachments.length > 0) {
+      setLoadingImages(true);
+      const urls = issue.attachments.map((blob) => blob.getDirectURL());
+      setImageUrls(urls);
+      setLoadingImages(false);
+    } else {
+      setLoadingImages(false);
+    }
+  });
+
   const formatDate = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) / 1000000);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   const handleAddComment = () => {
@@ -180,20 +186,20 @@ export default function IssueDetailDialog({ issue, open, onOpenChange }: IssueDe
 
               {/* Voting */}
               <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleVote(Variant_upvote_downvote.upvote)}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleVote(Variant_upvote_downvote.upvote)} 
                   disabled={!identity}
                   className="transition-all duration-300 hover:scale-105"
                 >
                   <ThumbsUp className="mr-2 h-4 w-4" />
                   {upvotes}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleVote(Variant_upvote_downvote.downvote)}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleVote(Variant_upvote_downvote.downvote)} 
                   disabled={!identity}
                   className="transition-all duration-300 hover:scale-105"
                 >
@@ -210,8 +216,8 @@ export default function IssueDetailDialog({ issue, open, onOpenChange }: IssueDe
                   <h3 className="font-semibold">Status History</h3>
                   <div className="space-y-2">
                     {statusHistory.map((update, index) => (
-                      <div
-                        key={index}
+                      <div 
+                        key={index} 
                         className="rounded-lg border bg-muted/30 p-3 text-sm transition-all duration-300 hover:bg-muted/50"
                       >
                         <div className="flex items-center justify-between">
@@ -238,16 +244,11 @@ export default function IssueDetailDialog({ issue, open, onOpenChange }: IssueDe
 
                 {identity && (
                   <div className="space-y-2">
-                    <Textarea
-                      placeholder="Add a comment..."
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      rows={3}
-                    />
-                    <Button
+                    <Textarea placeholder="Add a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} rows={3} />
+                    <Button 
+                      onClick={handleAddComment} 
+                      disabled={addComment.isPending || !commentText.trim()} 
                       size="sm"
-                      onClick={handleAddComment}
-                      disabled={!commentText.trim() || addComment.isPending}
                       className="transition-all duration-300 hover:scale-105"
                     >
                       {addComment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -257,23 +258,24 @@ export default function IssueDetailDialog({ issue, open, onOpenChange }: IssueDe
                 )}
 
                 <div className="space-y-3">
-                  {comments.map((comment, index) => (
-                    <div
-                      key={comment.id}
-                      className="rounded-lg border bg-muted/30 p-3 text-sm transition-all duration-300 hover:bg-muted/50"
-                      style={{
-                        animationDelay: `${index * 50}ms`,
-                      }}
-                    >
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className="font-medium text-xs text-muted-foreground">
-                          {comment.userId.toString().slice(0, 12)}...
-                        </span>
-                        <span className="text-xs text-muted-foreground">{formatDate(comment.timestamp)}</span>
+                  {comments.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground">No comments yet. Be the first to comment!</p>
+                  ) : (
+                    comments.map((comment) => (
+                      <div 
+                        key={comment.id} 
+                        className="rounded-lg border bg-muted/30 p-3 transition-all duration-300 hover:bg-muted/50"
+                      >
+                        <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                          <User className="h-3 w-3" />
+                          <span>{comment.userId.toString().slice(0, 8)}...</span>
+                          <span>•</span>
+                          <span>{formatDate(comment.timestamp)}</span>
+                        </div>
+                        <p className="text-sm">{comment.content}</p>
                       </div>
-                      <p>{comment.content}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -281,40 +283,48 @@ export default function IssueDetailDialog({ issue, open, onOpenChange }: IssueDe
         </DialogContent>
       </Dialog>
 
-      {/* Lightbox */}
+      {/* Image Lightbox */}
       {selectedImageIndex !== null && (
-        <Dialog open={selectedImageIndex !== null} onOpenChange={() => setSelectedImageIndex(null)}>
-          <DialogContent className="max-w-4xl p-2">
-            <div className="relative flex items-center justify-center">
-              {selectedImageIndex > 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-2 z-10"
-                  onClick={handlePreviousImage}
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </Button>
-              )}
+        <Dialog open={true} onOpenChange={() => setSelectedImageIndex(null)}>
+          <DialogContent className="max-w-5xl p-0 transition-all duration-300 animate-in fade-in zoom-in-95">
+            <div className="relative">
+              <button
+                onClick={() => setSelectedImageIndex(null)}
+                className="absolute right-4 top-4 z-10 rounded-full bg-background/80 p-2 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-background"
+              >
+                <X className="h-4 w-4" />
+              </button>
               <img
                 src={imageUrls[selectedImageIndex]}
                 alt={`Issue photo ${selectedImageIndex + 1}`}
-                className="max-h-[80vh] max-w-full rounded-lg object-contain"
+                className="h-auto max-h-[90vh] w-full object-contain"
               />
-              {selectedImageIndex < imageUrls.length - 1 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 z-10"
-                  onClick={handleNextImage}
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </Button>
+              {imageUrls.length > 1 && (
+                <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-4">
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={handlePreviousImage}
+                    disabled={selectedImageIndex === 0}
+                    className="transition-all duration-300 hover:scale-110"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="rounded-full bg-background/80 px-3 py-1 text-sm backdrop-blur-sm">
+                    {selectedImageIndex + 1} / {imageUrls.length}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={handleNextImage}
+                    disabled={selectedImageIndex === imageUrls.length - 1}
+                    className="transition-all duration-300 hover:scale-110"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
             </div>
-            <p className="text-center text-sm text-muted-foreground">
-              {selectedImageIndex + 1} / {imageUrls.length}
-            </p>
           </DialogContent>
         </Dialog>
       )}

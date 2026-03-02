@@ -163,11 +163,10 @@ export interface UserProfile {
     phone?: string;
 }
 export enum Category {
-    garbage = "garbage",
-    traffic = "traffic",
+    streetlights = "streetlights",
+    other = "other",
     potholes = "potholes",
-    noise = "noise",
-    streetlight = "streetlight"
+    waste = "waste"
 }
 export enum LoginErrorCode {
     internalError = "internalError",
@@ -180,8 +179,10 @@ export enum Priority {
     medium = "medium"
 }
 export enum Status {
+    reopened = "reopened",
     resolved = "resolved",
-    pending = "pending",
+    closed = "closed",
+    open = "open",
     inProgress = "inProgress"
 }
 export enum UserRole {
@@ -210,10 +211,11 @@ export interface backendInterface {
     deleteSubmission(id: string): Promise<void>;
     getAllSubmissions(): Promise<Array<Submission>>;
     getAnalytics(): Promise<{
-        pendingSubmissions: bigint;
+        closedSubmissions: bigint;
         inProgressSubmissions: bigint;
         totalSubmissions: bigint;
         resolvedSubmissions: bigint;
+        openSubmissions: bigint;
     }>;
     getAssignedSubmissions(): Promise<Array<Submission>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -225,17 +227,16 @@ export interface backendInterface {
     getSubmissionByCategory(category: Category): Promise<Array<Submission>>;
     getSubmissionVersions(id: string): Promise<Array<string>>;
     getSubmissionsByStatus(status: Status): Promise<Array<Submission>>;
-    getSubmissionsByUser(userId: Principal): Promise<Array<Submission>>;
+    getSubmissionsSortedByUpvotes(): Promise<Array<Submission>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getVoteCount(submissionId: string): Promise<{
         upvotes: bigint;
         downvotes: bigint;
     }>;
     isCallerAdmin(): Promise<boolean>;
-    login(): Promise<LoginResult>;
+    login(isOperator: boolean): Promise<LoginResult>;
     removeVote(submissionId: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    seedDemoData(): Promise<void>;
     setMunicipalStaffStatus(user: Principal, isStaff: boolean): Promise<void>;
     updateSubmission(id: string, newPayload: Submission): Promise<void>;
     updateSubmissionStatus(id: string, newStatus: Status, notes: string): Promise<void>;
@@ -455,10 +456,11 @@ export class Backend implements backendInterface {
         }
     }
     async getAnalytics(): Promise<{
-        pendingSubmissions: bigint;
+        closedSubmissions: bigint;
         inProgressSubmissions: bigint;
         totalSubmissions: bigint;
         resolvedSubmissions: bigint;
+        openSubmissions: bigint;
     }> {
         if (this.processError) {
             try {
@@ -613,17 +615,17 @@ export class Backend implements backendInterface {
             return from_candid_vec_n22(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getSubmissionsByUser(arg0: Principal): Promise<Array<Submission>> {
+    async getSubmissionsSortedByUpvotes(): Promise<Array<Submission>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getSubmissionsByUser(arg0);
+                const result = await this.actor.getSubmissionsSortedByUpvotes();
                 return from_candid_vec_n22(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getSubmissionsByUser(arg0);
+            const result = await this.actor.getSubmissionsSortedByUpvotes();
             return from_candid_vec_n22(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -672,17 +674,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async login(): Promise<LoginResult> {
+    async login(arg0: boolean): Promise<LoginResult> {
         if (this.processError) {
             try {
-                const result = await this.actor.login();
+                const result = await this.actor.login(arg0);
                 return from_candid_LoginResult_n45(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.login();
+            const result = await this.actor.login(arg0);
             return from_candid_LoginResult_n45(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -711,20 +713,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n51(this._uploadFile, this._downloadFile, arg0));
-            return result;
-        }
-    }
-    async seedDemoData(): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.seedDemoData();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.seedDemoData();
             return result;
         }
     }
@@ -954,26 +942,28 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
     };
 }
 function from_candid_variant_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    reopened: null;
+} | {
     resolved: null;
 } | {
-    pending: null;
+    closed: null;
+} | {
+    open: null;
 } | {
     inProgress: null;
 }): Status {
-    return "resolved" in value ? Status.resolved : "pending" in value ? Status.pending : "inProgress" in value ? Status.inProgress : value;
+    return "reopened" in value ? Status.reopened : "resolved" in value ? Status.resolved : "closed" in value ? Status.closed : "open" in value ? Status.open : "inProgress" in value ? Status.inProgress : value;
 }
 function from_candid_variant_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    garbage: null;
+    streetlights: null;
 } | {
-    traffic: null;
+    other: null;
 } | {
     potholes: null;
 } | {
-    noise: null;
-} | {
-    streetlight: null;
+    waste: null;
 }): Category {
-    return "garbage" in value ? Category.garbage : "traffic" in value ? Category.traffic : "potholes" in value ? Category.potholes : "noise" in value ? Category.noise : "streetlight" in value ? Category.streetlight : value;
+    return "streetlights" in value ? Category.streetlights : "other" in value ? Category.other : "potholes" in value ? Category.potholes : "waste" in value ? Category.waste : value;
 }
 function from_candid_variant_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     low: null;
@@ -1148,41 +1138,45 @@ function to_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint
     } : value;
 }
 function to_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Status): {
+    reopened: null;
+} | {
     resolved: null;
 } | {
-    pending: null;
+    closed: null;
+} | {
+    open: null;
 } | {
     inProgress: null;
 } {
-    return value == Status.resolved ? {
+    return value == Status.reopened ? {
+        reopened: null
+    } : value == Status.resolved ? {
         resolved: null
-    } : value == Status.pending ? {
-        pending: null
+    } : value == Status.closed ? {
+        closed: null
+    } : value == Status.open ? {
+        open: null
     } : value == Status.inProgress ? {
         inProgress: null
     } : value;
 }
 function to_candid_variant_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Category): {
-    garbage: null;
+    streetlights: null;
 } | {
-    traffic: null;
+    other: null;
 } | {
     potholes: null;
 } | {
-    noise: null;
-} | {
-    streetlight: null;
+    waste: null;
 } {
-    return value == Category.garbage ? {
-        garbage: null
-    } : value == Category.traffic ? {
-        traffic: null
+    return value == Category.streetlights ? {
+        streetlights: null
+    } : value == Category.other ? {
+        other: null
     } : value == Category.potholes ? {
         potholes: null
-    } : value == Category.noise ? {
-        noise: null
-    } : value == Category.streetlight ? {
-        streetlight: null
+    } : value == Category.waste ? {
+        waste: null
     } : value;
 }
 function to_candid_variant_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Priority): {

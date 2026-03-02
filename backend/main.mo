@@ -7,15 +7,15 @@ import Iter "mo:core/Iter";
 import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
+import Nat "mo:core/Nat";
+
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-
-
 actor {
-  // Types
+  // --- Types ---
   type GeoCoordinates = {
     latitude : Float;
     longitude : Float;
@@ -64,17 +64,18 @@ actor {
     };
 
     public type Category = {
-      #garbage;
-      #traffic;
-      #streetlight;
       #potholes;
-      #noise;
+      #streetlights;
+      #waste;
+      #other;
     };
 
     public type Status = {
-      #pending;
+      #open;
       #inProgress;
       #resolved;
+      #reopened;
+      #closed;
     };
 
     public type Submission = {
@@ -97,6 +98,24 @@ actor {
       switch (Text.compare(submission1.title, submission2.title)) {
         case (#equal) { Text.compare(submission1.id, submission2.id) };
         case (order) { order };
+      };
+    };
+
+    func compareStatus(status1 : Status, status2 : Status) : Order.Order {
+      switch (status1, status2) {
+        case (#open, #open) { #equal };
+        case (#inProgress, #inProgress) { #equal };
+        case (#resolved, #resolved) { #equal };
+        case (#reopened, #reopened) { #equal };
+        case (#closed, #closed) { #equal };
+        case (#open, _) { #less };
+        case (#inProgress, #open) { #greater };
+        case (#inProgress, _) { #less };
+        case (#resolved, #closed) { #greater };
+        case (#resolved, _) { #less };
+        case (#reopened, #closed) { #greater };
+        case (#reopened, _) { #less };
+        case (#closed, _) { #greater };
       };
     };
   };
@@ -124,7 +143,7 @@ actor {
     notes : Text;
   };
 
-  // State
+  // --- State ---
   include MixinStorage();
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -135,8 +154,9 @@ actor {
   let comments = Map.empty<Text, Comment>();
   let votes = Map.empty<Text, Vote>();
   let statusUpdates = Map.empty<Text, [StatusUpdate]>();
+  let upvoteCounts = Map.empty<Text, Nat>(); // New upvote count cache
 
-  // Helper Functions
+  // --- Helper Functions ---
   func isMunicipalStaff(caller : Principal) : Bool {
     if (AccessControl.isAdmin(accessControlState, caller)) {
       return true;
@@ -157,36 +177,51 @@ actor {
     submission.createdBy == caller;
   };
 
-  // Login Functionality
-  // Returns the caller's current authentication status and role.
-  // Does NOT allow self-elevation of privileges; municipal staff status
-  // can only be granted by an admin via setMunicipalStaffStatus.
-  public shared ({ caller }) func login() : async LoginResult {
-    if (caller.isAnonymous()) {
-      return #error({
-        message = "You must complete Internet Identity authentication before logging in. Please click the authenticate button and try again.";
-        code = #unauthorized;
-      });
-    };
-
-    let isOperator = isMunicipalStaff(caller);
-
+  // --- Enhanced Login Functionality ---
+  // Login is accessible to all users including guests (anonymous principals)
+  public shared ({ caller }) func login(isOperator : Bool) : async LoginResult {
     if (isOperator) {
+      // Municipal operators must be authenticated users
+      if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+        return #error({
+          message = "Municipal operators must authenticate with Internet Identity";
+          code = #unauthorized;
+        });
+      };
+
+      let existingProfile = userProfiles.get(caller);
+      switch (existingProfile) {
+        case (null) {
+          userProfiles.add(
+            caller,
+            {
+              name = "Municipal Operator";
+              email = "";
+              phone = null;
+              isMunicipalStaff = true;
+            },
+          );
+        };
+        case (?profile) {
+          userProfiles.add(caller, { profile with isMunicipalStaff = true });
+        };
+      };
       #success({
         isAuthenticated = true;
         isMunicipalOperator = true;
         redirectView = "municipal-dashboard";
       });
     } else {
+      let isAuthenticated = AccessControl.hasPermission(accessControlState, caller, #user);
       #success({
-        isAuthenticated = true;
+        isAuthenticated;
         isMunicipalOperator = false;
         redirectView = "citizen-interface";
       });
     };
   };
 
-  // User Profile Functions
+  // --- User Profile Functions ---
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view profiles");
@@ -209,15 +244,12 @@ actor {
     let existingProfile = userProfiles.get(caller);
     let finalProfile = switch (existingProfile) {
       case (null) {
-        // New profile: never allow self-granting of municipal staff status
         { profile with isMunicipalStaff = false };
       };
       case (?existing) {
         if (AccessControl.isAdmin(accessControlState, caller)) {
-          // Admins can set any field
           profile;
         } else {
-          // Non-admins cannot change their own isMunicipalStaff flag
           { profile with isMunicipalStaff = existing.isMunicipalStaff };
         };
       };
@@ -226,7 +258,6 @@ actor {
     userProfiles.add(caller, finalProfile);
   };
 
-  // Only admins can grant or revoke municipal staff status
   public shared ({ caller }) func setMunicipalStaffStatus(user : Principal, isStaff : Bool) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can set municipal staff status");
@@ -242,7 +273,7 @@ actor {
     };
   };
 
-  // Core Submission Functions
+  // --- Core Submission Functions ---
   public shared ({ caller }) func createSubmission(payload : Submission.Submission) : async Text {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can create submissions");
@@ -265,7 +296,7 @@ actor {
       createdBy = caller;
       createdAt = Time.now();
       updatedAt = Time.now();
-      status = #pending;
+      status = #open;
       attachments = [];
     };
 
@@ -411,7 +442,7 @@ actor {
       case (null) {
         Runtime.trap("Submission not found");
       };
-      case (?_submission) {
+      case (?submission) {
         submissions.remove(id);
         submissionVersions.remove(id);
         statusUpdates.remove(id);
@@ -444,7 +475,7 @@ actor {
     };
   };
 
-  // Comment Functions
+  // --- Comment Functions ---
   public shared ({ caller }) func addComment(submissionId : Text, content : Text, commentId : Text) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can add comments");
@@ -487,7 +518,7 @@ actor {
     };
   };
 
-  // Vote Functions
+  // --- Vote Functions ---
   public shared ({ caller }) func addVote(submissionId : Text, voteType : { #upvote; #downvote }) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can vote");
@@ -505,6 +536,23 @@ actor {
           voteType;
         };
         votes.add(voteKey, vote);
+
+        // Update upvote cache count
+        switch (upvoteCounts.get(submissionId)) {
+          case (null) {
+            upvoteCounts.add(submissionId, if (voteType == #upvote) { 1 } else { 0 });
+          };
+          case (?currentCount) {
+            let newCount = if (voteType == #upvote) {
+              currentCount + 1;
+            } else if (currentCount > 0) {
+              currentCount - 1;
+            } else {
+              0;
+            };
+            upvoteCounts.add(submissionId, newCount);
+          };
+        };
       };
     };
   };
@@ -515,10 +563,26 @@ actor {
     };
 
     let voteKey = submissionId # caller.toText();
-    votes.remove(voteKey);
+    switch (votes.get(voteKey)) {
+      case (null) {};
+      case (?vote) {
+        votes.remove(voteKey);
+        // Adjust the upvote cache count if this was an upvote
+        if (vote.voteType == #upvote) {
+          switch (upvoteCounts.get(submissionId)) {
+            case (null) {};
+            case (?currentCount) {
+              let newCount = if (currentCount > 0) { currentCount - 1 } else { 0 };
+              upvoteCounts.add(submissionId, newCount);
+            };
+          };
+        };
+      };
+    };
   };
 
-  // Query Functions
+  // --- Query Functions ---
+  // Public query - all users including guests can view individual submissions
   public query ({ caller }) func getSubmission(id : Text) : async Submission.Submission {
     switch (submissions.get(id)) {
       case (null) {
@@ -528,24 +592,12 @@ actor {
     };
   };
 
+  // Public query - all users including guests can view all submissions (for map view)
   public query ({ caller }) func getAllSubmissions() : async [Submission.Submission] {
     submissions.values().toArray().sort();
   };
 
-  public query ({ caller }) func getSubmissionsByUser(userId : Principal) : async [Submission.Submission] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only authenticated users can get submissions by user");
-    };
-
-    if (caller != userId and not isMunicipalStaff(caller) and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: You can only view your own submissions");
-    };
-
-    submissions.values().toArray().filter<Submission.Submission>(
-      func(submission) { submission.createdBy == userId }
-    );
-  };
-
+  // Public query - all users including guests can filter by status
   public query ({ caller }) func getSubmissionsByStatus(status : Submission.Status) : async [Submission.Submission] {
     let filtered = submissions.values().toArray().filter(
       func(submission) { submission.status == status }
@@ -553,6 +605,7 @@ actor {
     filtered;
   };
 
+  // Municipal staff only - version history is internal
   public query ({ caller }) func getSubmissionVersions(id : Text) : async [Text] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view version history");
@@ -572,12 +625,14 @@ actor {
     };
   };
 
+  // Public query - all users including guests can filter by category
   public query ({ caller }) func getSubmissionByCategory(category : Submission.Category) : async [Submission.Submission] {
     submissions.values().toArray().filter<Submission.Submission>(
       func(submission) { submission.category == category }
     );
   };
 
+  // Authenticated users only - view their own submissions
   public query ({ caller }) func getMySubmissions() : async [Submission.Submission] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view their submissions");
@@ -588,6 +643,7 @@ actor {
     );
   };
 
+  // Municipal staff only - view assigned submissions
   public query ({ caller }) func getAssignedSubmissions() : async [Submission.Submission] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view assigned submissions");
@@ -607,6 +663,7 @@ actor {
     );
   };
 
+  // Public query - all users including guests can view status history for transparency
   public query ({ caller }) func getStatusHistory(submissionId : Text) : async [StatusUpdate] {
     switch (statusUpdates.get(submissionId)) {
       case (null) { [] };
@@ -614,12 +671,14 @@ actor {
     };
   };
 
+  // Public query - all users including guests can view comments
   public query ({ caller }) func getComments(submissionId : Text) : async [Comment] {
     comments.values().toArray().filter<Comment>(
       func(comment) { comment.submissionId == submissionId }
     );
   };
 
+  // Public query - all users including guests can view vote counts
   public query ({ caller }) func getVoteCount(submissionId : Text) : async { upvotes : Nat; downvotes : Nat } {
     var upvotes = 0;
     var downvotes = 0;
@@ -636,11 +695,13 @@ actor {
     { upvotes; downvotes };
   };
 
+  // Municipal staff only - analytics for dashboard
   public query ({ caller }) func getAnalytics() : async {
     totalSubmissions : Nat;
-    pendingSubmissions : Nat;
+    openSubmissions : Nat;
     inProgressSubmissions : Nat;
     resolvedSubmissions : Nat;
+    closedSubmissions : Nat;
   } {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view analytics");
@@ -650,176 +711,48 @@ actor {
       Runtime.trap("Unauthorized: Only municipal staff can view analytics");
     };
 
-    var pendingCount = 0;
+    var openCount = 0;
     var inProgressCount = 0;
     var resolvedCount = 0;
+    var closedCount = 0;
 
     for (submission in submissions.values()) {
       switch (submission.status) {
-        case (#pending) { pendingCount += 1 };
+        case (#open) { openCount += 1 };
         case (#inProgress) { inProgressCount += 1 };
         case (#resolved) { resolvedCount += 1 };
+        case (#reopened) { openCount += 1 };
+        case (#closed) { closedCount += 1 };
       };
     };
 
     {
       totalSubmissions = submissions.size();
-      pendingSubmissions = pendingCount;
+      openSubmissions = openCount;
       inProgressSubmissions = inProgressCount;
       resolvedSubmissions = resolvedCount;
+      closedSubmissions = closedCount;
     };
   };
 
-  // Seed Demo Data Function
-  public shared ({ caller }) func seedDemoData() : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can seed demo data");
-    };
+  // Public query - get sorted submissions by upvotes using the upvote cache
+  public query ({ caller }) func getSubmissionsSortedByUpvotes() : async [Submission.Submission] {
+    let sortedIds = upvoteCounts.toArray().sort(
+      func(a, b) {
+        let (_, upvotesA) = a;
+        let (_, upvotesB) = b;
+        Nat.compare(upvotesB, upvotesA);
+      }
+    );
 
-    let demoIssues = [
-      {
-        title = "Overflowing Garbage Bin";
-        description = "Garbage bin near Main Street is overflowing and needs immediate attention.";
-        category = #garbage;
-        priority = #high;
-        location = ?{
-          latitude = 40.7128;
-          longitude = -74.0060;
+    let sortedSubmissions = sortedIds.map(
+      func((id, _)) {
+        switch (submissions.get(id)) {
+          case (null) { Runtime.trap("Submission not found") };
+          case (?submission) { submission };
         };
-        address = ?{
-          street = "123 Main St";
-          city = "New York";
-          zipCode = "10001";
-        };
-        status = #pending;
-      },
-      {
-        title = "Broken Streetlight";
-        description = "The streetlight at the corner of Elm and 5th is broken.";
-        category = #streetlight;
-        priority = #medium;
-        location = ?{
-          latitude = 40.7138;
-          longitude = -74.0070;
-        };
-        address = ?{
-          street = "Elm St & 5th Ave";
-          city = "New York";
-          zipCode = "10001";
-        };
-        status = #pending;
-      },
-      {
-        title = "Traffic Jam";
-        description = "Heavy traffic on Broadway during peak hours. Requesting better signal management.";
-        category = #traffic;
-        priority = #low;
-        location = ?{
-          latitude = 40.7148;
-          longitude = -74.0080;
-        };
-        address = ?{
-          street = "Broadway";
-          city = "New York";
-          zipCode = "10001";
-        };
-        status = #inProgress;
-      },
-      {
-        title = "Pothole on 7th Ave";
-        description = "Large pothole on 7th Ave causing traffic issues.";
-        category = #potholes;
-        priority = #high;
-        location = ?{
-          latitude = 40.7158;
-          longitude = -74.0090;
-        };
-        address = ?{
-          street = "7th Ave";
-          city = "New York";
-          zipCode = "10001";
-        };
-        status = #pending;
-      },
-      {
-        title = "Noise Complaint";
-        description = "Excessive noise from nightclub on weekends.";
-        category = #noise;
-        priority = #medium;
-        location = ?{
-          latitude = 40.7168;
-          longitude = -74.0100;
-        };
-        address = ?{
-          street = "Nightclub Alley";
-          city = "New York";
-          zipCode = "10001";
-        };
-        status = #pending;
-      },
-      {
-        title = "Garbage Bin Almost Full";
-        description = "Garbage bin near 8th Ave is almost full, needs to be emptied soon.";
-        category = #garbage;
-        priority = #medium;
-        location = ?{
-          latitude = 40.7178;
-          longitude = -74.0110;
-        };
-        address = ?{
-          street = "8th Ave";
-          city = "New York";
-          zipCode = "10001";
-        };
-        status = #pending;
-      },
-    ];
-
-    for (i in demoIssues.keys()) {
-      let issue = demoIssues[i];
-      let submissionId = "demoIssue_" # i.toText();
-
-      let submission = {
-        id = submissionId;
-        title = issue.title;
-        description = issue.description;
-        category = issue.category;
-        priority = issue.priority;
-        location = issue.location;
-        address = issue.address;
-        status = issue.status;
-        createdBy = caller;
-        assignedStaff = null;
-        createdAt = Time.now();
-        updatedAt = Time.now();
-        attachments = [];
-      };
-
-      submissions.add(submissionId, submission);
-
-      // Add comments for some issues
-      if (i == 1 or i == 3) {
-        let commentId = "comment_" # i.toText();
-        let comment : Comment = {
-          id = commentId;
-          submissionId;
-          userId = caller;
-          content = "This issue needs urgent attention.";
-          timestamp = Time.now();
-        };
-        comments.add(commentId, comment);
-      };
-
-      // Add votes for some issues
-      if (i == 2 or i == 4) {
-        let voteKey = submissionId # caller.toText();
-        let vote = {
-          submissionId;
-          userId = caller;
-          voteType = #upvote;
-        };
-        votes.add(voteKey, vote);
-      };
-    };
+      }
+    );
+    sortedSubmissions;
   };
 };

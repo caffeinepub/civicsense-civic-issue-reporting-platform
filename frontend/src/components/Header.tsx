@@ -3,7 +3,6 @@ import { useGetCallerUserProfile, useIsCallerAdmin } from '../hooks/useQueries';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Hexagon, LogOut, Shield, LayoutDashboard, Menu, X, Building2 } from 'lucide-react';
+import { Hexagon, LogOut, Shield, LayoutDashboard, Menu, X } from 'lucide-react';
 import { openLoginModal } from '../utils/openLoginModal';
 import { useState } from 'react';
 
@@ -67,24 +66,13 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo */}
-        <div
-          className="flex items-center gap-2 cursor-pointer"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        >
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
           <Hexagon className="h-8 w-8 fill-navy text-navy" />
           <span className="text-xl font-bold text-navy">CivicSense</span>
-          {/* Municipal Portal badge shown when municipal staff is logged in */}
-          {isAuthenticated && isMunicipalStaff && (
-            <Badge className="ml-1 hidden items-center gap-1 bg-navy px-2 py-0.5 text-xs font-semibold text-white sm:flex">
-              <Building2 className="h-3 w-3" />
-              Municipal Portal
-            </Badge>
-          )}
         </div>
 
         {/* Desktop Navigation - Center */}
-        {/* Show public nav only for unauthenticated users or non-municipal citizens */}
-        {(!isAuthenticated || (isAuthenticated && userProfile && !isMunicipalStaff)) && (
+        {!isAuthenticated && (
           <nav className="hidden items-center gap-8 md:flex">
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -113,23 +101,21 @@ export default function Header() {
           </nav>
         )}
 
-        {/* Municipal Portal nav links for staff */}
-        {isAuthenticated && isMunicipalStaff && (
-          <nav className="hidden items-center gap-6 md:flex">
-            <button
-              onClick={() => scrollToSection('dashboard')}
-              className="flex items-center gap-1.5 text-sm font-medium text-navy transition-colors hover:text-orange"
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </button>
-          </nav>
-        )}
-
         {/* Desktop Auth Buttons / User Menu */}
         <div className="hidden items-center gap-3 md:flex">
           {isAuthenticated && userProfile ? (
             <>
+              {isMunicipalStaff && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => scrollToSection('dashboard')}
+                  className="text-navy hover:bg-orange/10 hover:text-orange"
+                >
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -213,16 +199,7 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="border-t bg-white md:hidden">
           <div className="container mx-auto space-y-3 px-4 py-4">
-            {/* Municipal staff mobile badge */}
-            {isAuthenticated && isMunicipalStaff && (
-              <div className="flex items-center gap-2 rounded-lg bg-navy/5 px-3 py-2">
-                <Building2 className="h-4 w-4 text-navy" />
-                <span className="text-sm font-semibold text-navy">Municipal Portal</span>
-              </div>
-            )}
-
-            {/* Public nav for unauthenticated or citizen users */}
-            {(!isAuthenticated || (isAuthenticated && userProfile && !isMunicipalStaff)) && (
+            {!isAuthenticated && (
               <>
                 <button
                   onClick={() => {
@@ -251,61 +228,44 @@ export default function Header() {
                 >
                   About
                 </button>
+                <div className="space-y-2 border-t pt-3">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-navy hover:text-orange"
+                    onClick={() => {
+                      handleLoginClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={isLoggingIn}
+                  >
+                    {isLoggingIn ? 'Logging in...' : 'Login'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full border-navy text-navy hover:bg-navy hover:text-white"
+                    onClick={() => {
+                      handleSignUpClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={isLoggingIn}
+                  >
+                    Sign Up
+                  </Button>
+                  <Button
+                    className="w-full bg-orange text-white hover:bg-orange/90"
+                    onClick={() => {
+                      handleAuthorityPortalClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={isLoggingIn}
+                  >
+                    Authority Portal
+                  </Button>
+                </div>
               </>
             )}
-
-            {/* Municipal staff mobile nav */}
-            {isAuthenticated && isMunicipalStaff && (
-              <button
-                onClick={() => scrollToSection('dashboard')}
-                className="flex w-full items-center gap-2 py-2 text-left text-sm font-medium text-navy hover:text-orange"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                Dashboard
-              </button>
-            )}
-
-            {/* Unauthenticated auth buttons */}
-            {!isAuthenticated && (
-              <div className="space-y-2 border-t pt-3">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-navy hover:text-orange"
-                  onClick={() => {
-                    handleLoginClick();
-                    setMobileMenuOpen(false);
-                  }}
-                  disabled={isLoggingIn}
-                >
-                  {isLoggingIn ? 'Logging in...' : 'Login'}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-navy text-navy hover:bg-navy hover:text-white"
-                  onClick={() => {
-                    handleSignUpClick();
-                    setMobileMenuOpen(false);
-                  }}
-                  disabled={isLoggingIn}
-                >
-                  Sign Up
-                </Button>
-                <Button
-                  className="w-full bg-orange text-white hover:bg-orange/90"
-                  onClick={() => {
-                    handleAuthorityPortalClick();
-                    setMobileMenuOpen(false);
-                  }}
-                  disabled={isLoggingIn}
-                >
-                  Authority Portal
-                </Button>
-              </div>
-            )}
-
-            {/* Authenticated user info and logout */}
             {isAuthenticated && userProfile && (
-              <div className="border-t pt-3">
+              <>
                 <div className="flex items-center gap-3 py-2">
                   <Avatar className="h-9 w-9">
                     <AvatarFallback className="bg-orange text-sm font-semibold text-white">
@@ -317,6 +277,14 @@ export default function Header() {
                     <p className="text-xs text-muted-foreground">{userProfile.email}</p>
                   </div>
                 </div>
+                {isMunicipalStaff && (
+                  <button
+                    onClick={() => scrollToSection('dashboard')}
+                    className="block w-full py-2 text-left text-sm font-medium text-navy hover:text-orange"
+                  >
+                    Dashboard
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     handleLogout();
@@ -326,7 +294,7 @@ export default function Header() {
                 >
                   Logout
                 </button>
-              </div>
+              </>
             )}
           </div>
         </div>

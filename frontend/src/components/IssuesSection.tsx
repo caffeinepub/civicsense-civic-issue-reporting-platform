@@ -1,52 +1,42 @@
 import { useState } from 'react';
-import { useGetMyIssues } from '../hooks/useQueries';
+import { useGetAllIssues, useGetMyIssues, useGetCallerUserProfile, useIsCallerAdmin } from '../hooks/useQueries';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2, LogIn, FileText, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Loader2 } from 'lucide-react';
 import IssueCard from './IssueCard';
 import ReportIssueDialog from './ReportIssueDialog';
 import IssueDetailDialog from './IssueDetailDialog';
 import type { Submission } from '../backend';
-import { Status } from '../backend';
-import { openLoginModal } from '../utils/openLoginModal';
-
-const statusSummaryConfig = [
-  { status: Status.pending, label: 'Pending', icon: AlertCircle, color: 'text-orange-600' },
-  { status: Status.inProgress, label: 'In Progress', icon: Clock, color: 'text-yellow-600' },
-  { status: Status.resolved, label: 'Resolved', icon: CheckCircle2, color: 'text-green-600' },
-];
 
 export default function IssuesSection() {
+  const { data: allIssues = [], isLoading: allLoading } = useGetAllIssues();
   const { data: myIssues = [], isLoading: myLoading } = useGetMyIssues();
   const { identity, loginStatus } = useInternetIdentity();
+  const { data: userProfile } = useGetCallerUserProfile();
+  const { data: isAdmin } = useIsCallerAdmin();
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<Submission | null>(null);
 
   const isAuthenticated = !!identity;
   const isAuthenticating = loginStatus === 'logging-in' || loginStatus === 'initializing';
+  const isMunicipalStaff = userProfile?.isMunicipalStaff || isAdmin;
 
-  // Count issues by status for the summary strip
-  const statusCounts = statusSummaryConfig.map(({ status }) => ({
-    status,
-    count: myIssues.filter((i) => i.status === status).length,
-  }));
+  // Municipal staff should not see the Report Issue button
+  const showReportButton = !isMunicipalStaff;
 
   return (
     <section id="issues" className="border-b bg-background py-12">
       <div className="container px-4">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">My Reported Issues</h2>
-            <p className="text-muted-foreground">
-              {isAuthenticated
-                ? 'Track the status of issues you have submitted'
-                : 'Log in to view and manage your reported issues'}
-            </p>
+            <h2 className="text-3xl font-bold tracking-tight">Civic Issues</h2>
+            <p className="text-muted-foreground">Browse and report issues in your community</p>
           </div>
-          {isAuthenticated && (
+          {showReportButton && (
             <Button
               onClick={() => setReportDialogOpen(true)}
-              disabled={isAuthenticating}
+              disabled={!isAuthenticated || isAuthenticating}
               className="transition-all duration-300 hover:scale-105"
             >
               {isAuthenticating ? (
@@ -64,65 +54,62 @@ export default function IssuesSection() {
           )}
         </div>
 
-        {/* Not authenticated — login prompt */}
-        {!isAuthenticated && (
-          <div className="rounded-xl border border-dashed bg-muted/30 py-16 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <LogIn className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="mb-2 text-xl font-semibold">Sign in to see your reports</h3>
-            <p className="mb-6 text-muted-foreground">
-              Log in to view the issues you have submitted and track their resolution status.
-            </p>
-            <Button onClick={() => openLoginModal()} className="transition-all duration-300 hover:scale-105">
-              <LogIn className="mr-2 h-4 w-4" />
-              Log In / Sign Up
-            </Button>
-          </div>
-        )}
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="all">
+              All Issues ({allIssues.length})
+            </TabsTrigger>
+            <TabsTrigger value="my">
+              My Reports ({myIssues.length})
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Authenticated — show user's issues */}
-        {isAuthenticated && (
-          <>
-            {/* Status summary strip */}
-            {myIssues.length > 0 && (
-              <div className="mb-6 flex flex-wrap gap-3">
-                {statusSummaryConfig.map(({ status, label, icon: Icon, color }) => {
-                  const count = statusCounts.find((s) => s.status === status)?.count ?? 0;
-                  return (
-                    <div
-                      key={status}
-                      className="flex items-center gap-2 rounded-full border bg-background px-4 py-1.5 text-sm shadow-sm"
-                    >
-                      <Icon className={`h-4 w-4 ${color}`} />
-                      <span className="font-medium">{count}</span>
-                      <span className="text-muted-foreground">{label}</span>
-                    </div>
-                  );
-                })}
+          <TabsContent value="all" className="space-y-4">
+            {allLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : allIssues.length === 0 ? (
+              <div className="rounded-lg border border-dashed py-12 text-center">
+                <p className="text-muted-foreground">No issues reported yet. Be the first to report one!</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {allIssues.map((issue, index) => (
+                  <div
+                    key={issue.id}
+                    className="animate-in fade-in"
+                    style={{
+                      animationDelay: `${index * 50}ms`,
+                      animationDuration: '500ms',
+                      animationFillMode: 'backwards',
+                    }}
+                  >
+                    <IssueCard issue={issue} onClick={() => setSelectedIssue(issue)} />
+                  </div>
+                ))}
               </div>
             )}
+          </TabsContent>
 
+          <TabsContent value="my" className="space-y-4">
             {myLoading ? (
-              <div className="flex items-center justify-center py-16">
+              <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : myIssues.length === 0 ? (
-              <div className="rounded-xl border border-dashed bg-muted/30 py-16 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <FileText className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">No issues reported yet</h3>
-                <p className="mb-6 text-muted-foreground">
-                  Help improve your community by reporting civic issues in your area.
-                </p>
-                <Button
-                  onClick={() => setReportDialogOpen(true)}
-                  className="transition-all duration-300 hover:scale-105"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Report Your First Issue
-                </Button>
+              <div className="rounded-lg border border-dashed py-12 text-center">
+                <p className="text-muted-foreground">You haven't reported any issues yet.</p>
+                {showReportButton && (
+                  <Button
+                    onClick={() => setReportDialogOpen(true)}
+                    variant="outline"
+                    className="mt-4"
+                    disabled={!isAuthenticated || isAuthenticating}
+                  >
+                    Report Your First Issue
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -141,11 +128,13 @@ export default function IssuesSection() {
                 ))}
               </div>
             )}
-          </>
-        )}
+          </TabsContent>
+        </Tabs>
       </div>
 
-      <ReportIssueDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+      {showReportButton && (
+        <ReportIssueDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+      )}
       {selectedIssue && (
         <IssueDetailDialog
           issue={selectedIssue}

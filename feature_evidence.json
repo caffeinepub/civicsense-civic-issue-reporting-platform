@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-conditional-rendering-logic-in-homepage-tsx-so-that-authenticated-municipal-staff-admin-users-are-shown-municipalportal-and-authenticated-citizens-are-shown-the-citizen-specific-view-while-only-unauthenticated-users-see-publicportal-the-current-bug-causes-authenticated-users-to-be-served-the-publicportal-instead-of-their-role-appropriate-portal",
-      "featureTitle": "Fix the conditional rendering logic in HomePage.tsx so that authenticated municipal staff/admin users are shown MunicipalPortal and authenticated citizens are shown the citizen-specific view, while only unauthenticated users see PublicPortal. The current bug causes authenticated users to be served the PublicPortal instead of their role-appropriate portal.",
+      "featureId": "feature-in-reportissuedialog-tsx-automatically-trigger-the-browser-geolocation-api-to-fetch-the-user-s-current-coordinates-as-soon-as-the-dialog-is-opened-pre-filling-the-location-fields-without-requiring-the-user-to-click-any-button",
+      "featureTitle": "In ReportIssueDialog.tsx, automatically trigger the browser Geolocation API to fetch the user's current coordinates as soon as the dialog is opened, pre-filling the location fields without requiring the user to click any button.",
       "files": [
-        "frontend/src/pages/HomePage.tsx"
+        "frontend/src/components/ReportIssueDialog.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -17,15 +17,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-1"
+        "REQ-5"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-audit-the-role-propagation-flow-in-loginselectionmodal-tsx-ensure-that-after-a-successful-backend-login-call-the-user-s-role-citizen-vs-municipal-staff-is-correctly-written-to-sessionstorage-and-that-homepage-tsx-reads-the-same-sessionstorage-key-to-determine-which-portal-to-render",
-      "featureTitle": "Audit the role propagation flow in LoginSelectionModal.tsx: ensure that after a successful backend login call, the user's role (citizen vs. municipal staff) is correctly written to sessionStorage and that HomePage.tsx reads the same sessionStorage key to determine which portal to render.",
+      "featureId": "feature-ensure-the-report-issue-button-and-the-reportissuedialog-are-only-rendered-in-the-public-citizen-portal-view-in-the-municipal-portal-view-authenticated-municipal-operator-role-the-report-issue-entry-point-and-dialog-must-not-be-visible-or-accessible",
+      "featureTitle": "Ensure the Report Issue button and the ReportIssueDialog are only rendered in the Public (citizen) portal view. In the Municipal portal view (authenticated municipal operator role), the Report Issue entry point and dialog must not be visible or accessible.",
       "files": [
-        "frontend/src/components/LoginSelectionModal.tsx"
+        "frontend/src/components/IssuesSection.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -37,7 +37,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-2"
+        "REQ-6"
       ],
       "confidence": "high"
     }

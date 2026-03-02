@@ -12,26 +12,31 @@ export function useLogin() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (): Promise<LoginResult> => {
+    mutationFn: async (isOperator: boolean): Promise<LoginResult> => {
       if (!actor) throw new Error('Actor not available');
-      // backend login() takes no arguments — role is determined server-side
-      const result = await actor.login();
+      const result = await actor.login(isOperator);
       return result;
     },
     onSuccess: (result: LoginResult) => {
-      if (result.__kind__ === 'success') {
-        queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
-        queryClient.invalidateQueries({ queryKey: ['isCallerAdmin'] });
+      // Invalidate queries to refresh user data
+      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['isCallerAdmin'] });
+      
+      // Handle error results
+      if (result.__kind__ === 'error') {
+        console.error('Login error:', result.error);
       }
     },
-    // No onError toast here — LoginSelectionModal handles error display directly
+    onError: (error: Error) => {
+      console.error('Login mutation error:', error);
+      toast.error(`Login failed: ${error.message}`);
+    },
   });
 }
 
 // User Profile Queries
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
-  const { identity } = useInternetIdentity();
 
   const query = useQuery<UserProfile | null>({
     queryKey: ['currentUserProfile'],
@@ -39,18 +44,14 @@ export function useGetCallerUserProfile() {
       if (!actor) throw new Error('Actor not available');
       return actor.getCallerUserProfile();
     },
-    // Only fetch when actor is ready AND user is authenticated (has identity)
-    // This prevents stale null returns for anonymous users
-    enabled: !!actor && !actorFetching && !!identity,
+    enabled: !!actor && !actorFetching,
     retry: false,
-    // Ensure we always get fresh data after login
-    staleTime: 0,
   });
 
   return {
     ...query,
     isLoading: actorFetching || query.isLoading,
-    isFetched: !!actor && !!identity && query.isFetched,
+    isFetched: !!actor && query.isFetched,
   };
 }
 
@@ -75,7 +76,6 @@ export function useSaveCallerUserProfile() {
 
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
 
   return useQuery<boolean>({
     queryKey: ['isCallerAdmin'],
@@ -83,8 +83,7 @@ export function useIsCallerAdmin() {
       if (!actor) return false;
       return actor.isCallerAdmin();
     },
-    enabled: !!actor && !isFetching && !!identity,
-    staleTime: 0,
+    enabled: !!actor && !isFetching,
   });
 }
 
@@ -131,7 +130,6 @@ export function useGetMyIssues() {
 
 export function useGetAssignedIssues() {
   const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
 
   return useQuery<Submission[]>({
     queryKey: ['assignedIssues'],
@@ -139,37 +137,10 @@ export function useGetAssignedIssues() {
       if (!actor) return [];
       return actor.getAssignedSubmissions();
     },
-    enabled: !!actor && !isFetching && !!identity,
-  });
-}
-
-export function useGetSubmissionsByStatus(status: Status) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Submission[]>({
-    queryKey: ['submissionsByStatus', status],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getSubmissionsByStatus(status);
-    },
     enabled: !!actor && !isFetching,
   });
 }
 
-export function useGetSubmissionsByCategory(category: Category) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Submission[]>({
-    queryKey: ['submissionsByCategory', category],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getSubmissionByCategory(category);
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// Mutation Hooks
 export function useCreateIssue() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
@@ -182,30 +153,11 @@ export function useCreateIssue() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
       queryClient.invalidateQueries({ queryKey: ['myIssues'] });
-      toast.success('Issue reported successfully!');
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      toast.success('Issue reported successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create issue: ${error.message}`);
-    },
-  });
-}
-
-export function useUpdateIssue() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: Submission }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.updateSubmission(id, payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
-      queryClient.invalidateQueries({ queryKey: ['myIssues'] });
-      toast.success('Issue updated successfully!');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to update issue: ${error.message}`);
+      toast.error(`Failed to report issue: ${error.message}`);
     },
   });
 }
@@ -215,24 +167,16 @@ export function useUpdateIssueStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      status,
-      notes,
-    }: {
-      id: string;
-      status: Status;
-      notes: string;
-    }) => {
+    mutationFn: async ({ id, status, notes }: { id: string; status: Status; notes: string }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.updateSubmissionStatus(id, status, notes);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
-      queryClient.invalidateQueries({ queryKey: ['myIssues'] });
-      queryClient.invalidateQueries({ queryKey: ['assignedIssues'] });
+      queryClient.invalidateQueries({ queryKey: ['issue', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['statusHistory', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
-      toast.success('Status updated successfully!');
+      toast.success('Issue status updated');
     },
     onError: (error: Error) => {
       toast.error(`Failed to update status: ${error.message}`);
@@ -245,20 +189,15 @@ export function useAssignIssue() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      staffPrincipal,
-    }: {
-      id: string;
-      staffPrincipal: Principal | null;
-    }) => {
+    mutationFn: async ({ id, staffPrincipal }: { id: string; staffPrincipal: Principal | null }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.assignSubmissionToStaff(id, staffPrincipal);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
+      queryClient.invalidateQueries({ queryKey: ['issue', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['assignedIssues'] });
-      toast.success('Issue assigned successfully!');
+      toast.success('Issue assigned successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to assign issue: ${error.message}`);
@@ -266,28 +205,28 @@ export function useAssignIssue() {
   });
 }
 
-export function useDeleteIssue() {
+export function useUploadAttachments() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ submissionId, blobs }: { submissionId: string; blobs: ExternalBlob[] }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.deleteSubmission(id);
+      return actor.uploadAttachment(submissionId, blobs);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
+      queryClient.invalidateQueries({ queryKey: ['issue', variables.submissionId] });
       queryClient.invalidateQueries({ queryKey: ['myIssues'] });
-      queryClient.invalidateQueries({ queryKey: ['analytics'] });
-      toast.success('Issue deleted successfully!');
+      toast.success('Photos uploaded successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete issue: ${error.message}`);
+      toast.error(`Failed to upload photos: ${error.message}`);
     },
   });
 }
 
-// Comment Hooks
+// Comments
 export function useGetComments(submissionId: string) {
   const { actor, isFetching } = useActor();
 
@@ -306,21 +245,13 @@ export function useAddComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      submissionId,
-      content,
-      commentId,
-    }: {
-      submissionId: string;
-      content: string;
-      commentId: string;
-    }) => {
+    mutationFn: async ({ submissionId, content, commentId }: { submissionId: string; content: string; commentId: string }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.addComment(submissionId, content, commentId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['comments', variables.submissionId] });
-      toast.success('Comment added!');
+      toast.success('Comment added');
     },
     onError: (error: Error) => {
       toast.error(`Failed to add comment: ${error.message}`);
@@ -328,37 +259,12 @@ export function useAddComment() {
   });
 }
 
-export function useDeleteComment() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      commentId,
-      submissionId,
-    }: {
-      commentId: string;
-      submissionId: string;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.deleteComment(commentId);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['comments', variables.submissionId] });
-      toast.success('Comment deleted!');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete comment: ${error.message}`);
-    },
-  });
-}
-
-// Vote Hooks
+// Votes
 export function useGetVoteCount(submissionId: string) {
   const { actor, isFetching } = useActor();
 
   return useQuery<{ upvotes: bigint; downvotes: bigint }>({
-    queryKey: ['votes', submissionId],
+    queryKey: ['voteCount', submissionId],
     queryFn: async () => {
       if (!actor) return { upvotes: BigInt(0), downvotes: BigInt(0) };
       return actor.getVoteCount(submissionId);
@@ -372,18 +278,12 @@ export function useAddVote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      submissionId,
-      voteType,
-    }: {
-      submissionId: string;
-      voteType: Variant_upvote_downvote;
-    }) => {
+    mutationFn: async ({ submissionId, voteType }: { submissionId: string; voteType: Variant_upvote_downvote }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.addVote(submissionId, voteType);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['votes', variables.submissionId] });
+      queryClient.invalidateQueries({ queryKey: ['voteCount', variables.submissionId] });
     },
     onError: (error: Error) => {
       toast.error(`Failed to vote: ${error.message}`);
@@ -401,31 +301,11 @@ export function useRemoveVote() {
       return actor.removeVote(submissionId);
     },
     onSuccess: (_, submissionId) => {
-      queryClient.invalidateQueries({ queryKey: ['votes', submissionId] });
+      queryClient.invalidateQueries({ queryKey: ['voteCount', submissionId] });
     },
     onError: (error: Error) => {
       toast.error(`Failed to remove vote: ${error.message}`);
     },
-  });
-}
-
-// Analytics
-export function useGetAnalytics() {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
-
-  return useQuery<{
-    totalSubmissions: bigint;
-    pendingSubmissions: bigint;
-    inProgressSubmissions: bigint;
-    resolvedSubmissions: bigint;
-  }>({
-    queryKey: ['analytics'],
-    queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getAnalytics();
-    },
-    enabled: !!actor && !isFetching && !!identity,
   });
 }
 
@@ -443,54 +323,22 @@ export function useGetStatusHistory(submissionId: string) {
   });
 }
 
-// Upload Attachment
-export function useUploadAttachment() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
+// Analytics
+export function useGetAnalytics() {
+  const { actor, isFetching } = useActor();
 
-  return useMutation({
-    mutationFn: async ({
-      submissionId,
-      blobs,
-    }: {
-      submissionId: string;
-      blobs: ExternalBlob[];
-    }) => {
+  return useQuery<{
+    totalSubmissions: bigint;
+    openSubmissions: bigint;
+    inProgressSubmissions: bigint;
+    resolvedSubmissions: bigint;
+    closedSubmissions: bigint;
+  }>({
+    queryKey: ['analytics'],
+    queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return actor.uploadAttachment(submissionId, blobs);
+      return actor.getAnalytics();
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['issue', variables.submissionId] });
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
-      toast.success('Attachment uploaded successfully!');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to upload attachment: ${error.message}`);
-    },
-  });
-}
-
-// Seed Demo Data
-export function useSeedDemoData() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.seedDemoData();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
-      queryClient.invalidateQueries({ queryKey: ['myIssues'] });
-      queryClient.invalidateQueries({ queryKey: ['analytics'] });
-      queryClient.invalidateQueries({ queryKey: ['assignedIssues'] });
-      queryClient.invalidateQueries({ queryKey: ['submissionsByCategory'] });
-      queryClient.invalidateQueries({ queryKey: ['submissionsByStatus'] });
-      toast.success('Demo data seeded successfully!');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to seed demo data: ${error.message}`);
-    },
+    enabled: !!actor && !isFetching,
   });
 }

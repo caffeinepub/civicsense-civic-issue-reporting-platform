@@ -1,35 +1,26 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useActor } from '../hooks/useActor';
-import { useQueryClient } from '@tanstack/react-query';
+import { useLogin } from '../hooks/useQueries';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Building2, Loader2, Sparkles, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { LOGIN_MODAL_EVENT } from '../utils/openLoginModal';
 
 type AuthStage = 'idle' | 'ii-auth' | 'waiting-principal' | 'backend-login' | 'success';
 
-// Consistent sessionStorage key used by both LoginSelectionModal and HomePage
-export const SESSION_KEY_IS_MUNICIPAL = 'isMunicipalOperator';
-
 export default function LoginSelectionModal() {
   const { login: iiLogin, loginStatus, identity, isInitializing } = useInternetIdentity();
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
+  const backendLogin = useLogin();
   const [showModal, setShowModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'public' | 'municipal' | null>(null);
   const [authStage, setAuthStage] = useState<AuthStage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [principalCheckAttempts, setPrincipalCheckAttempts] = useState(0);
 
-  // Refs to prevent duplicate calls and track in-flight state
-  const loginInProgressRef = useRef(false);
-  const retryCountRef = useRef(0);
-  const selectedRoleRef = useRef<'public' | 'municipal' | null>(null);
-
+  const isAuthenticated = !!identity;
   const isIdle = authStage === 'idle';
   const isIIAuth = authStage === 'ii-auth';
   const isWaitingPrincipal = authStage === 'waiting-principal';
@@ -37,129 +28,87 @@ export default function LoginSelectionModal() {
   const isSuccess = authStage === 'success';
   const isLoggingIn = !isIdle && !isSuccess;
 
-  const resetState = useCallback(() => {
+  // Reset all state
+  const resetState = () => {
     setSelectedRole(null);
     setAuthStage('idle');
     setError(null);
     setRetryCount(0);
-    retryCountRef.current = 0;
-    selectedRoleRef.current = null;
-    loginInProgressRef.current = false;
-  }, []);
+    setPrincipalCheckAttempts(0);
+  };
 
   // Step 2: Monitor for principal availability after II authentication
   useEffect(() => {
-    if (authStage !== 'waiting-principal') return;
-
-    if (identity) {
-      setAuthStage('backend-login');
+    if (authStage !== 'waiting-principal' || !selectedRole) {
       return;
     }
 
-    let attempts = 0;
+    // Check if identity is now available
+    if (identity) {
+      console.log('✓ Principal confirmed:', identity.getPrincipal().toString());
+      setAuthStage('backend-login');
+      setPrincipalCheckAttempts(0);
+      return;
+    }
+
+    // Implement timeout for principal check
     const checkInterval = setInterval(() => {
-      attempts += 1;
-      if (attempts >= 30) {
-        clearInterval(checkInterval);
-        setError('Authentication timed out. Please try again.');
-        setAuthStage('idle');
-        loginInProgressRef.current = false;
-        toast.error('Authentication timed out. Please try again.');
-      }
+      setPrincipalCheckAttempts(prev => {
+        const newCount = prev + 1;
+        
+        // After 30 attempts (15 seconds), show error
+        if (newCount >= 30) {
+          clearInterval(checkInterval);
+          setError('Authentication timed out. Please try again.');
+          setAuthStage('idle');
+          toast.error('Authentication timed out. Please try again.');
+          return 0;
+        }
+        
+        return newCount;
+      });
     }, 500);
 
     return () => clearInterval(checkInterval);
-  }, [authStage, identity]);
+  }, [authStage, identity, selectedRole]);
 
   // Step 3: Execute backend login once principal is confirmed
-  // Using a ref guard to ensure this only fires once per login attempt
   useEffect(() => {
-    if (authStage !== 'backend-login' || !identity || !actor) return;
-
-    // Guard: prevent duplicate invocations
-    if (loginInProgressRef.current) return;
-    loginInProgressRef.current = true;
-
-    const role = selectedRoleRef.current;
-    if (!role) {
-      loginInProgressRef.current = false;
-      setError('No role selected. Please try again.');
-      setAuthStage('idle');
+    if (authStage !== 'backend-login' || !identity || !selectedRole) {
       return;
     }
 
     const executeBackendLogin = async () => {
       try {
-        // Set a temporary loading signal in sessionStorage so HomePage
-        // can show a spinner instead of flashing PublicPortal
-        sessionStorage.setItem('loginInProgress', 'true');
-
-        // backend login() takes NO arguments — role is determined server-side
-        // from the caller's stored profile / admin status
-        const result = await actor.login();
+        console.log('→ Calling backend login...');
+        const isOperator = selectedRole === 'municipal';
+        const result = await backendLogin.mutateAsync(isOperator);
 
         if (result.__kind__ === 'success') {
-          const isMunicipalFromBackend = result.success.isMunicipalOperator;
-
-          // Write the CONFIRMED role from the backend response to sessionStorage.
-          // This is the authoritative value — not the user's selection intent.
-          if (isMunicipalFromBackend) {
-            sessionStorage.setItem(SESSION_KEY_IS_MUNICIPAL, 'true');
-            sessionStorage.setItem('scrollToDashboard', 'true');
-          } else {
-            // Explicitly clear so no stale value causes wrong portal rendering
-            sessionStorage.removeItem(SESSION_KEY_IS_MUNICIPAL);
-            sessionStorage.removeItem('scrollToDashboard');
-          }
-          sessionStorage.removeItem('loginInProgress');
-
-          // Invalidate and wait for the profile to be refetched
-          // so HomePage has fresh data before the modal closes
-          await queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
-          await queryClient.invalidateQueries({ queryKey: ['isCallerAdmin'] });
-          await queryClient.refetchQueries({ queryKey: ['currentUserProfile'] });
-
-          loginInProgressRef.current = false;
+          console.log('✓ Backend login successful');
           setAuthStage('success');
-
+          sessionStorage.setItem('intendedRole', selectedRole);
+          
           setTimeout(() => {
             setShowModal(false);
             resetState();
-            toast.success(
-              `Welcome! Logged in as ${isMunicipalFromBackend ? 'Municipal Operator' : 'Public User'}`
-            );
-          }, 800);
+            toast.success(`Welcome! Logged in as ${selectedRole === 'municipal' ? 'Municipal Operator' : 'Public User'}`);
+          }, 1000);
         } else {
-          // Backend returned an error result (not a thrown exception)
-          const errorMsg = result.error?.message || 'Login failed. Please try again.';
-          loginInProgressRef.current = false;
-          // Clear all session storage on error
-          sessionStorage.removeItem(SESSION_KEY_IS_MUNICIPAL);
-          sessionStorage.removeItem('scrollToDashboard');
-          sessionStorage.removeItem('loginInProgress');
-          setError(errorMsg);
-          setAuthStage('idle');
-          toast.error(errorMsg);
+          throw new Error(result.error.message || 'Backend login failed');
         }
       } catch (err: any) {
-        const currentRetry = retryCountRef.current;
-        if (currentRetry < 2) {
-          retryCountRef.current = currentRetry + 1;
-          setRetryCount(currentRetry + 1);
-          loginInProgressRef.current = false;
-          // Small delay before retry
+        console.error('Backend login error:', err);
+        
+        // Retry logic
+        if (retryCount < 3) {
+          console.log(`Retrying backend login (${retryCount + 1}/3)...`);
+          setRetryCount(prev => prev + 1);
           setTimeout(() => {
             setAuthStage('backend-login');
-          }, 1200);
+          }, 1000);
         } else {
-          retryCountRef.current = 0;
-          loginInProgressRef.current = false;
-          // Clear all session storage on final failure
-          sessionStorage.removeItem(SESSION_KEY_IS_MUNICIPAL);
-          sessionStorage.removeItem('scrollToDashboard');
-          sessionStorage.removeItem('loginInProgress');
-          const errorMsg = err?.message || 'Failed to complete login. Please try again.';
-          setError(errorMsg);
+          setError(err.message || 'Failed to complete login. Please try again.');
           setAuthStage('idle');
           toast.error('Login failed. Please try again.');
         }
@@ -167,66 +116,76 @@ export default function LoginSelectionModal() {
     };
 
     executeBackendLogin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authStage, identity, actor]);
+  }, [authStage, identity, selectedRole, backendLogin, retryCount]);
 
-  // Register global modal trigger
+  // Register global modal trigger with both methods
   useEffect(() => {
     const openModal = () => {
       if (!isInitializing) {
-        resetState();
+        console.log('✓ Opening login modal');
         setShowModal(true);
+        resetState();
       } else {
+        console.log('⚠ Modal trigger called but still initializing');
         toast.error('Please wait a moment and try again.');
       }
     };
 
+    // Method 1: Direct function call
     if (typeof window !== 'undefined') {
       (window as any).openLoginModal = openModal;
+      console.log('✓ Login modal trigger registered (direct)');
     }
 
-    const handleEvent = () => openModal();
+    // Method 2: Event listener (fallback)
+    const handleEvent = () => {
+      console.log('✓ Login modal event received');
+      openModal();
+    };
     window.addEventListener(LOGIN_MODAL_EVENT, handleEvent);
-
+    console.log('✓ Login modal event listener registered');
+    
+    // Cleanup
     return () => {
       if (typeof window !== 'undefined') {
         delete (window as any).openLoginModal;
       }
       window.removeEventListener(LOGIN_MODAL_EVENT, handleEvent);
     };
-  }, [isInitializing, resetState]);
+  }, [isInitializing]);
 
+  // Handle role selection and start authentication flow
   const handleRoleSelect = async (role: 'public' | 'municipal') => {
     if (isLoggingIn) return;
-
-    // Reset all state before starting a new login attempt
-    loginInProgressRef.current = false;
-    retryCountRef.current = 0;
-    selectedRoleRef.current = role;
 
     setSelectedRole(role);
     setError(null);
     setRetryCount(0);
 
     try {
+      console.log(`→ Starting ${role} login flow...`);
       setAuthStage('ii-auth');
+      
       await iiLogin();
+      
+      console.log('→ II authentication initiated, waiting for principal...');
       setAuthStage('waiting-principal');
     } catch (err: any) {
-      loginInProgressRef.current = false;
-      selectedRoleRef.current = null;
-      const errorMsg = err?.message || 'Authentication failed. Please try again.';
-      setError(errorMsg);
+      console.error('Internet Identity error:', err);
+      setError(err.message || 'Authentication failed. Please try again.');
       setAuthStage('idle');
       toast.error('Authentication failed. Please try again.');
     }
   };
 
   const handleOpenChange = (open: boolean) => {
+    console.log('Dialog onOpenChange called with:', open);
+    // Only allow closing if not currently logging in
     if (!open && !isLoggingIn) {
       setShowModal(false);
       resetState();
     } else if (open) {
+      // Allow opening
       setShowModal(true);
     }
   };
@@ -248,7 +207,7 @@ export default function LoginSelectionModal() {
             {isLoggingIn ? 'Logging In...' : 'Choose Your Role'}
           </DialogTitle>
           <DialogDescription className="text-center">
-            {isLoggingIn
+            {isLoggingIn 
               ? 'Please wait while we authenticate your account'
               : 'Select how you want to use CivicSense'}
           </DialogDescription>
@@ -258,7 +217,7 @@ export default function LoginSelectionModal() {
         {isLoggingIn && (
           <div className="space-y-3 py-4">
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
+              <div 
                 className="h-full bg-primary transition-all duration-500 ease-out"
                 style={{ width: `${getProgressPercentage()}%` }}
               />
@@ -279,15 +238,13 @@ export default function LoginSelectionModal() {
               {isBackendLogin && (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>
-                    Completing login{retryCount > 0 ? ` (retry ${retryCount}/2)` : ''}...
-                  </span>
+                  <span>Completing login{retryCount > 0 ? ` (retry ${retryCount}/3)` : ''}...</span>
                 </>
               )}
               {isSuccess && (
                 <>
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span className="text-green-600">Login successful!</span>
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                  <span className="text-success">Login successful!</span>
                 </>
               )}
             </div>
@@ -295,7 +252,7 @@ export default function LoginSelectionModal() {
         )}
 
         {/* Error Display */}
-        {error && !isLoggingIn && (
+        {error && (
           <div className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <p>{error}</p>
@@ -306,7 +263,7 @@ export default function LoginSelectionModal() {
         {!isLoggingIn && (
           <div className="grid gap-4 py-4">
             {/* Public User Card */}
-            <Card
+            <Card 
               className="group cursor-pointer border-2 transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-lg active:scale-[0.98]"
               onClick={() => handleRoleSelect('public')}
             >
@@ -340,7 +297,7 @@ export default function LoginSelectionModal() {
             </Card>
 
             {/* Municipal Operator Card */}
-            <Card
+            <Card 
               className="group cursor-pointer border-2 transition-all duration-300 hover:-translate-y-1 hover:border-accent hover:shadow-lg active:scale-[0.98]"
               onClick={() => handleRoleSelect('municipal')}
             >
@@ -379,7 +336,9 @@ export default function LoginSelectionModal() {
         {error && !isLoggingIn && (
           <Button
             onClick={() => {
-              if (selectedRoleRef.current) handleRoleSelect(selectedRoleRef.current);
+              if (selectedRole) {
+                handleRoleSelect(selectedRole);
+              }
             }}
             className="w-full"
             variant="outline"

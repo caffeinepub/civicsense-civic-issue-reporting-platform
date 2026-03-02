@@ -1,57 +1,55 @@
 {
   "kind": "build_request",
-  "title": "Fix HomePage incorrectly rendering as PublicPortal for authenticated users",
-  "projectName": "CivicSense",
-  "priority": "high",
+  "title": "Auto-fetch location on Report Issue open and hide Report Issue from Municipal portal",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-1",
-      "text": "Fix the conditional rendering logic in HomePage.tsx so that authenticated municipal staff/admin users are shown MunicipalPortal and authenticated citizens are shown the citizen-specific view, while only unauthenticated users see PublicPortal. The current bug causes authenticated users to be served the PublicPortal instead of their role-appropriate portal.",
+      "id": "REQ-5",
+      "text": "In ReportIssueDialog.tsx, automatically trigger the browser Geolocation API to fetch the user's current coordinates as soon as the dialog is opened, pre-filling the location fields without requiring the user to click any button.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-7"
         ],
         "quotes": [
-          "now the issue the homepage becomes public portal"
+          "it should fetch location automatically when reporting issue"
         ]
       },
       "acceptanceCriteria": [
-        "When a municipal staff or admin user is authenticated, HomePage renders MunicipalPortal, not PublicPortal.",
-        "When an unauthenticated user visits the homepage, HomePage renders PublicPortal.",
-        "When an authenticated citizen visits the homepage, HomePage renders the citizen-facing view (PublicPortal or a citizen-specific portal as intended), not the municipal dashboard.",
-        "The sessionStorage guard that prevents incorrect portal flashes during auth loading still works correctly — no flicker to PublicPortal during initial auth resolution for authenticated users.",
-        "Roles derived from sessionStorage and/or backend login response are correctly read and used to gate the portal selection in HomePage.tsx."
+        "When the Report Issue dialog opens, the browser geolocation prompt is triggered immediately.",
+        "If geolocation succeeds, latitude/longitude (and address if reverse-geocoded) are pre-filled in the location field.",
+        "If geolocation is denied or unavailable, the location field remains editable and an inline message informs the user.",
+        "The user can still manually edit or override the auto-fetched location."
       ]
     },
     {
-      "id": "REQ-2",
-      "text": "Audit the role propagation flow in LoginSelectionModal.tsx: ensure that after a successful backend login call, the user's role (citizen vs. municipal staff) is correctly written to sessionStorage and that HomePage.tsx reads the same sessionStorage key to determine which portal to render.",
+      "id": "REQ-6",
+      "text": "Ensure the Report Issue button and the ReportIssueDialog are only rendered in the Public (citizen) portal view. In the Municipal portal view (authenticated municipal operator role), the Report Issue entry point and dialog must not be visible or accessible.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-7"
         ],
         "quotes": [
-          "now the issue the homepage becomes public portal"
+          "reporting issue section is only shown in public portal not in municipal portal"
         ]
       },
       "acceptanceCriteria": [
-        "After login as municipal staff, the correct role value is stored in sessionStorage.",
-        "After login as a citizen, the correct role value is stored in sessionStorage.",
-        "HomePage.tsx reads the sessionStorage role value using the same key that LoginSelectionModal.tsx writes to.",
-        "No stale or mismatched sessionStorage values from a previous session cause the wrong portal to render."
+        "When logged in as a municipal operator, the Report Issue button does not appear anywhere in the UI.",
+        "The ReportIssueDialog cannot be opened from the municipal portal view.",
+        "When logged in as a citizen or unauthenticated public user, the Report Issue button remains visible and functional.",
+        "The IssuesSection and any other components that render the Report Issue button conditionally hide it based on the user's role."
       ]
     }
   ],
   "constraints": [
     "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
-    "Preserve the existing sessionStorage-based flash-prevention guard in HomePage.tsx; only fix the role-check logic."
+    "Role-based visibility must use the existing authentication and role state already available in the app (e.g., from useInternetIdentity or user profile hooks)."
   ],
   "nonGoals": [
-    "Redesigning the PublicPortal or MunicipalPortal UI.",
-    "Changes to backend role/auth logic unless directly required to fix the portal selection bug.",
-    "Adding new portal types or user roles."
+    "Adding a map-based location picker UI.",
+    "Storing or displaying geolocation data on the Municipal dashboard.",
+    "Changing the Municipal portal dashboard layout or features beyond hiding Report Issue."
   ],
   "imageRequirements": {
     "required": [],

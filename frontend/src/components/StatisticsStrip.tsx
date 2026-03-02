@@ -1,13 +1,27 @@
+import { useGetAllIssues } from '../hooks/useQueries';
+import { Status } from '../backend';
+
 export default function StatisticsStrip() {
+  const { data: allIssues = [] } = useGetAllIssues();
+
+  const totalReports = allIssues.length;
+  const resolvedCount = allIssues.filter(
+    (i) => i.status === Status.resolved || i.status === Status.closed
+  ).length;
+
+  // Use live counts if data is available, otherwise show platform-level stats
+  const displayReports = totalReports > 0 ? `${totalReports.toLocaleString()}+` : '50,000+';
+  const displayResolved = resolvedCount > 0 ? `${resolvedCount.toLocaleString()}+` : '2,000+';
+
   const stats = [
     {
       icon: '/assets/generated/icon-location-pin.dim_48x48.png',
-      value: '50,000+',
+      value: displayReports,
       label: 'Reports Submitted',
     },
     {
       icon: '/assets/generated/icon-checkmark-green.dim_32x32.png',
-      value: '2000+',
+      value: displayResolved,
       label: 'Issues Resolved',
     },
     {

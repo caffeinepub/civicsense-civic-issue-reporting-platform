@@ -1,32 +1,79 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 3,
-  "summary": "Project involves a web app where the homepage is incorrectly becoming a public portal instead of the intended private/authenticated view.",
+  "projectStateVersion": 5,
+  "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Homepage incorrectly renders as public portal instead of the intended private/authenticated homepage."
+    "Public and municipal portals not working (reported in v58)",
+    "Report Issue section: location is not auto-fetched on open",
+    "Report Issue section is incorrectly visible in the Municipal portal"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-fix-the-conditional-rendering-logic-in-homepage-tsx-so-that-authenticated-municipal-staff-admin-users-are-shown-municipalportal-and-authenticated-citizens-are-shown-the-citizen-specific-view-while-only-unauthenticated-users-see-publicportal-the-current-bug-causes-authenticated-users-to-be-served-the-publicportal-instead-of-their-role-appropriate-portal",
-      "title": "Fix the conditional rendering logic in HomePage.tsx so that authenticated municipal staff/admin users are shown MunicipalPortal and authenticated citizens are shown the citizen-specific view, while only unauthenticated users see PublicPortal. The current bug causes authenticated users to be served the PublicPortal instead of their role-appropriate portal.",
+      "id": "feature-in-reportissuedialog-tsx-automatically-trigger-the-browser-geolocation-api-to-fetch-the-user-s-current-coordinates-as-soon-as-the-dialog-is-opened-pre-filling-the-location-fields-without-requiring-the-user-to-click-any-button",
+      "title": "In ReportIssueDialog.tsx, automatically trigger the browser Geolocation API to fetch the user's current coordinates as soon as the dialog is opened, pre-filling the location fields without requiring the user to click any button.",
       "reqIds": [
-        "REQ-1"
+        "REQ-5"
       ],
       "version": 1
     },
     {
-      "id": "feature-audit-the-role-propagation-flow-in-loginselectionmodal-tsx-ensure-that-after-a-successful-backend-login-call-the-user-s-role-citizen-vs-municipal-staff-is-correctly-written-to-sessionstorage-and-that-homepage-tsx-reads-the-same-sessionstorage-key-to-determine-which-portal-to-render",
-      "title": "Audit the role propagation flow in LoginSelectionModal.tsx: ensure that after a successful backend login call, the user's role (citizen vs. municipal staff) is correctly written to sessionStorage and that HomePage.tsx reads the same sessionStorage key to determine which portal to render.",
+      "id": "feature-ensure-the-report-issue-button-and-the-reportissuedialog-are-only-rendered-in-the-public-citizen-portal-view-in-the-municipal-portal-view-authenticated-municipal-operator-role-the-report-issue-entry-point-and-dialog-must-not-be-visible-or-accessible",
+      "title": "Ensure the Report Issue button and the ReportIssueDialog are only rendered in the Public (citizen) portal view. In the Municipal portal view (authenticated municipal operator role), the Report Issue entry point and dialog must not be visible or accessible.",
       "reqIds": [
-        "REQ-2"
+        "REQ-6"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [],
-  "projectName": "CivicSense",
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Investigate and fix the Public portal so that unauthenticated users can access the public landing view (hero, stats, how-it-works sections) without errors or blank screens.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Investigate and fix the Municipal portal so that authenticated municipal operator users can access the dashboard view (DashboardSection, IssueManagementTable) without errors or blank screens.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Audit and fix the routing and authentication flow in HomePage.tsx and App.tsx to ensure the correct portal view is rendered based on authentication state and user role (public citizen vs. municipal operator).",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Audit and fix any backend actor or query failures in useQueries.ts that may be causing the portals to break, including login mutations for both public user and municipal operator roles.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Auto-fetch user location when the Report Issue section is opened, without requiring manual user action.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Ensure the Report Issue section is only shown in the Public portal and is hidden/not accessible in the Municipal portal.",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Fix broken Public and Municipal portals",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

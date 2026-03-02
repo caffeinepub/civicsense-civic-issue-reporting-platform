@@ -89,36 +89,37 @@ export default function CategoryStatsCards() {
     const categoryIssues = issues.filter((issue) => issue.category === category);
     const total = categoryIssues.length;
     const resolved = categoryIssues.filter(
-      (issue) => issue.status === Status.resolved
+      (issue) => issue.status === Status.resolved || issue.status === Status.closed
     ).length;
     const inProgress = categoryIssues.filter(
       (issue) => issue.status === Status.inProgress
     ).length;
     const reporting = categoryIssues.filter(
       (issue) =>
-        issue.status === Status.pending ||
-        issue.status === Status.inProgress
+        issue.status === Status.open ||
+        issue.status === Status.inProgress ||
+        issue.status === Status.reopened
     ).length;
 
     return { total, inProgress, resolved, reporting };
   };
 
-  // Show 3 categories matching the screenshot: Garbage, Traffic, Streetlight
+  // Show only 3 categories matching the screenshot: Garbage, Traffic (using waste), Streetlight
   const categories = [
     {
       icon: '/assets/generated/icon-garbage-blue.dim_64x64.png',
       name: 'Garbage',
-      category: Category.garbage,
+      category: Category.waste,
     },
     {
       icon: '/assets/generated/icon-traffic-light.dim_64x64.png',
       name: 'Traffic',
-      category: Category.traffic,
+      category: Category.potholes, // mapped to potholes as closest available
     },
     {
       icon: '/assets/generated/icon-streetlight-yellow.dim_64x64.png',
       name: 'Streetlight',
-      category: Category.streetlight,
+      category: Category.streetlights,
     },
   ];
 

@@ -1,45 +1,49 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix HomePage incorrectly rendering as PublicPortal for authenticated users",
+  "title": "Auto-fetch location on Report Issue open and hide Report Issue from Municipal portal",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Fix the conditional rendering logic in HomePage.tsx so that authenticated municipal staff/admin users are shown MunicipalPortal and authenticated citizens are shown the citizen-specific view, while only unauthenticated users see PublicPortal.",
+      "id": "REQ-5",
+      "summary": "Auto-fetch user location when Report Issue dialog opens",
       "acceptanceCriteria": [
-        "When a municipal staff or admin user is authenticated, HomePage renders MunicipalPortal, not PublicPortal.",
-        "When an unauthenticated user visits the homepage, HomePage renders PublicPortal.",
-        "When an authenticated citizen visits the homepage, HomePage renders the citizen-facing view (PublicPortal or a citizen-specific portal as intended), not the municipal dashboard.",
-        "The sessionStorage guard that prevents incorrect portal flashes during auth loading still works correctly — no flicker to PublicPortal during initial auth resolution for authenticated users.",
-        "Roles derived from sessionStorage and/or backend login response are correctly read and used to gate the portal selection in HomePage.tsx."
+        "When the Report Issue dialog opens, the browser geolocation prompt is triggered immediately.",
+        "If geolocation succeeds, latitude/longitude (and address if reverse-geocoded) are pre-filled in the location field.",
+        "If geolocation is denied or unavailable, the location field remains editable and an inline message informs the user.",
+        "The user can still manually edit or override the auto-fetched location."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/HomePage.tsx",
+          "path": "frontend/src/components/ReportIssueDialog.tsx",
           "operation": "modify",
-          "description": "Fix the conditional rendering logic to correctly check the user's role from sessionStorage before deciding which portal to render. Ensure that the sessionStorage key used for the role check matches exactly what LoginSelectionModal.tsx writes. The logic should: (1) read the sessionStorage role value (e.g., 'isMunicipalOperator' or 'userRole'), (2) render MunicipalPortal if the user is authenticated AND has municipal/admin role, (3) render PublicPortal for unauthenticated users or authenticated citizens, and (4) preserve the existing sessionStorage-based flash-prevention guard that checks for login completion before rendering to avoid showing the wrong portal during auth loading."
+          "description": "Add useEffect hook that triggers browser Geolocation API when dialog opens (when 'open' prop becomes true). Call navigator.geolocation.getCurrentPosition() to fetch coordinates and pre-fill latitude/longitude fields. Optionally reverse-geocode coordinates to address fields. Handle geolocation errors (denied/unavailable) by setting inline error message state and keeping fields editable. Ensure manual editing remains possible by not blocking user input."
         }
       ]
     },
     {
-      "id": "REQ-2",
-      "summary": "Audit the role propagation flow in LoginSelectionModal.tsx: ensure that after a successful backend login call, the user's role (citizen vs. municipal staff) is correctly written to sessionStorage and that HomePage.tsx reads the same sessionStorage key.",
+      "id": "REQ-6",
+      "summary": "Hide Report Issue button and dialog from Municipal portal view",
       "acceptanceCriteria": [
-        "After login as municipal staff, the correct role value is stored in sessionStorage.",
-        "After login as a citizen, the correct role value is stored in sessionStorage.",
-        "HomePage.tsx reads the sessionStorage role value using the same key that LoginSelectionModal.tsx writes to.",
-        "No stale or mismatched sessionStorage values from a previous session cause the wrong portal to render."
+        "When logged in as a municipal operator, the Report Issue button does not appear anywhere in the UI.",
+        "The ReportIssueDialog cannot be opened from the municipal portal view.",
+        "When logged in as a citizen or unauthenticated public user, the Report Issue button remains visible and functional.",
+        "The IssuesSection and any other components that render the Report Issue button conditionally hide it based on the user's role."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/LoginSelectionModal.tsx",
+          "path": "frontend/src/components/IssuesSection.tsx",
           "operation": "modify",
-          "description": "Audit and fix the role propagation logic after successful backend login. Ensure that the backend LoginResult success response (which includes 'isMunicipalOperator' boolean) is correctly written to sessionStorage using a consistent key (e.g., 'isMunicipalOperator' or 'userRole'). Verify that the sessionStorage write happens immediately after receiving the backend response and before any navigation or portal rendering. If the current implementation writes the role to a different key or in a different format than HomePage.tsx expects, align them to use the same key and value format. Also ensure that logout or session clearing removes this sessionStorage value to prevent stale data from affecting the next login."
+          "description": "Add role-based conditional rendering to hide the Report Issue button when user profile indicates isMunicipalStaff is true. Use the existing useGetCallerUserProfile hook to fetch user profile and check the isMunicipalStaff field. Only render the Report Issue Button component when user is not municipal staff or is unauthenticated."
         },
         {
-          "path": "frontend/src/hooks/useInternetIdentity.ts",
+          "path": "frontend/src/components/Header.tsx",
           "operation": "modify",
-          "description": "Ensure that the logout/clear function removes the role-related sessionStorage key(s) that LoginSelectionModal.tsx writes and HomePage.tsx reads. This prevents stale role data from a previous session from causing the wrong portal to render after a fresh login. Verify that all sessionStorage keys used for role/auth state are cleared when the user logs out."
+          "description": "If the Header component contains a Report Issue button or link in navigation, add role-based conditional rendering to hide it when user profile indicates isMunicipalStaff is true. Use the existing useGetCallerUserProfile hook to check the isMunicipalStaff field and conditionally render the navigation item."
+        },
+        {
+          "path": "frontend/src/pages/HomePage.tsx",
+          "operation": "modify",
+          "description": "Review and ensure the Report Issue entry point in the hero section or public landing view is only visible when user is not a municipal operator. Use the existing useGetCallerUserProfile hook to check isMunicipalStaff field and conditionally render any Report Issue buttons in the public landing view."
         }
       ]
     }

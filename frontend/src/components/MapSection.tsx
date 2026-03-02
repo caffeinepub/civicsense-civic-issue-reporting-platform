@@ -4,9 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Status } from '../backend';
 
 const statusColors: Record<Status, string> = {
-  [Status.pending]: 'bg-orange-500',
+  [Status.open]: 'bg-blue-500',
   [Status.inProgress]: 'bg-yellow-500',
   [Status.resolved]: 'bg-green-500',
+  [Status.reopened]: 'bg-orange-500',
+  [Status.closed]: 'bg-gray-500',
 };
 
 export default function MapSection() {
@@ -64,8 +66,8 @@ export default function MapSection() {
 
             <div className="flex items-center justify-center gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-orange-500" />
-                <span>Pending</span>
+                <div className="h-3 w-3 rounded-full bg-blue-500" />
+                <span>Open</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-3 w-3 rounded-full bg-yellow-500" />
@@ -74,6 +76,10 @@ export default function MapSection() {
               <div className="flex items-center gap-2">
                 <div className="h-3 w-3 rounded-full bg-green-500" />
                 <span>Resolved</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-gray-500" />
+                <span>Closed</span>
               </div>
             </div>
           </div>

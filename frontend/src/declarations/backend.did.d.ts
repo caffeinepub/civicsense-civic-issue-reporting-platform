@@ -15,11 +15,10 @@ export interface Address {
   'city' : string,
   'zipCode' : string,
 }
-export type Category = { 'garbage' : null } |
-  { 'traffic' : null } |
+export type Category = { 'streetlights' : null } |
+  { 'other' : null } |
   { 'potholes' : null } |
-  { 'noise' : null } |
-  { 'streetlight' : null };
+  { 'waste' : null };
 export interface Comment {
   'id' : string,
   'content' : string,
@@ -43,8 +42,10 @@ export interface LoginSuccess {
 export type Priority = { 'low' : null } |
   { 'high' : null } |
   { 'medium' : null };
-export type Status = { 'resolved' : null } |
-  { 'pending' : null } |
+export type Status = { 'reopened' : null } |
+  { 'resolved' : null } |
+  { 'closed' : null } |
+  { 'open' : null } |
   { 'inProgress' : null };
 export interface StatusUpdate {
   'updatedBy' : Principal,
@@ -124,10 +125,11 @@ export interface _SERVICE {
   'getAnalytics' : ActorMethod<
     [],
     {
-      'pendingSubmissions' : bigint,
+      'closedSubmissions' : bigint,
       'inProgressSubmissions' : bigint,
       'totalSubmissions' : bigint,
       'resolvedSubmissions' : bigint,
+      'openSubmissions' : bigint,
     }
   >,
   'getAssignedSubmissions' : ActorMethod<[], Array<Submission>>,
@@ -140,17 +142,16 @@ export interface _SERVICE {
   'getSubmissionByCategory' : ActorMethod<[Category], Array<Submission>>,
   'getSubmissionVersions' : ActorMethod<[string], Array<string>>,
   'getSubmissionsByStatus' : ActorMethod<[Status], Array<Submission>>,
-  'getSubmissionsByUser' : ActorMethod<[Principal], Array<Submission>>,
+  'getSubmissionsSortedByUpvotes' : ActorMethod<[], Array<Submission>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getVoteCount' : ActorMethod<
     [string],
     { 'upvotes' : bigint, 'downvotes' : bigint }
   >,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'login' : ActorMethod<[], LoginResult>,
+  'login' : ActorMethod<[boolean], LoginResult>,
   'removeVote' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'seedDemoData' : ActorMethod<[], undefined>,
   'setMunicipalStaffStatus' : ActorMethod<[Principal, boolean], undefined>,
   'updateSubmission' : ActorMethod<[string, Submission], undefined>,
   'updateSubmissionStatus' : ActorMethod<[string, Status, string], undefined>,

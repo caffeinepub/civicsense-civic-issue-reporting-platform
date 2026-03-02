@@ -1,15 +1,23 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-03-01T21:01:03.252Z",
-  "summary": "The diff implements both REQ-1 and REQ-2. HomePage.tsx now correctly gates MunicipalPortal behind authenticated municipal staff/admin checks (from profile, admin query, and sessionStorage), and LoginSelectionModal.tsx exports and uses a consistent SESSION_KEY_IS_MUNICIPAL constant written only after backend confirmation. The sessionStorage flash-prevention guard is preserved. All acceptance criteria appear addressed.",
+  "generatedAt": "2026-03-02T11:03:35.447Z",
+  "summary": "Both REQ-5 and REQ-6 appear to be implemented in the diff. REQ-5 is addressed in ReportIssueDialog.tsx with auto-fetching geolocation on dialog open, reverse geocoding via Nominatim, inline loading/error states, and editable fields. REQ-6 is addressed in IssuesSection.tsx by checking isMunicipalStaff/isAdmin and conditionally hiding the Report Issue button and dialog. All major acceptance criteria appear covered.",
   "missing_requirements": [],
-  "hallucinated_features": [],
+  "hallucinated_features": [
+    {
+      "description": "Reverse geocoding via Nominatim API to pre-fill street, city, and zip code address fields as separate form fields",
+      "reason": "REQ-5 mentions 'address if reverse-geocoded' only as a parenthetical optional item, but the implementation specifically calls the Nominatim API and populates distinct street, city, and zip code fields beyond what was explicitly requested.",
+      "evidence": [
+        "frontend/src/components/ReportIssueDialog.tsx"
+      ]
+    }
+  ],
   "confidence": 0.88,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/LoginSelectionModal.tsx",
-    "frontend/src/pages/HomePage.tsx",
+    "frontend/src/components/IssuesSection.tsx",
+    "frontend/src/components/ReportIssueDialog.tsx",
     "project_state.json"
   ]
 }

@@ -1,70 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreateIssue, useUploadAttachment } from '@/hooks/useQueries';
-import { useInternetIdentity } from '@/hooks/useInternetIdentity';
-import { Category, Priority, Status, ExternalBlob } from '@/backend';
-import { MapPin, Loader2, AlertCircle, X, Upload } from 'lucide-react';
+import { useCreateIssue, useUploadAttachments } from '../hooks/useQueries';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { Loader2, X, MapPin } from 'lucide-react';
+import { Category, Priority, Status, ExternalBlob } from '../backend';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 
 interface ReportIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-interface LocationState {
-  status: 'idle' | 'fetching' | 'success' | 'error';
-  errorMessage?: string;
+interface ImagePreview {
+  id: string;
+  file: File;
+  preview: string;
+  blob?: ExternalBlob;
+  uploadProgress: number;
 }
+
+const categoryOptions: { value: Category; label: string }[] = [
+  { value: Category.potholes, label: 'Potholes' },
+  { value: Category.streetlights, label: 'Streetlights' },
+  { value: Category.waste, label: 'Waste Management' },
+  { value: Category.other, label: 'Other' },
+];
 
 export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDialogProps) {
   const { identity } = useInternetIdentity();
   const createIssue = useCreateIssue();
-  const uploadAttachment = useUploadAttachment();
+  const uploadAttachments = useUploadAttachments();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<Category>(Category.garbage);
-  const [priority, setPriority] = useState<Priority>(Priority.medium);
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [category, setCategory] = useState<Category>(Category.other);
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
   const [zipCode, setZipCode] = useState('');
-  const [images, setImages] = useState<File[]>([]);
-  const [locationState, setLocationState] = useState<LocationState>({ status: 'idle' });
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [images, setImages] = useState<ImagePreview[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
-  const isSubmitting = createIssue.isPending || uploadAttachment.isPending;
+  const isSubmitting = createIssue.isPending || uploadAttachments.isPending;
 
   // Auto-fetch location when dialog opens
   useEffect(() => {
     if (!open) return;
 
-    // Reset form state
-    setTitle('');
-    setDescription('');
-    setCategory(Category.garbage);
-    setPriority(Priority.medium);
-    setLatitude('');
-    setLongitude('');
-    setStreet('');
-    setCity('');
-    setZipCode('');
-    setImages([]);
-    setSubmitError(null);
-    setLocationState({ status: 'idle' });
-
     if (!navigator.geolocation) {
-      setLocationState({ status: 'error', errorMessage: 'Geolocation is not supported by your browser.' });
+      setLocationError('Geolocation is not supported by your browser. Please enter location manually.');
       return;
     }
 
-    setLocationState({ status: 'fetching' });
+    setLocationLoading(true);
+    setLocationError(null);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -72,71 +70,94 @@ export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDia
         const lng = position.coords.longitude;
         setLatitude(lat.toFixed(6));
         setLongitude(lng.toFixed(6));
+        setLocationLoading(false);
 
-        // Reverse geocode using Nominatim (free, no API key needed)
+        // Attempt reverse geocoding via browser-side fetch (no backend needed)
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
             { headers: { 'Accept-Language': 'en' } }
           );
           if (response.ok) {
             const data = await response.json();
             const addr = data.address || {};
-            const streetVal = [addr.road, addr.house_number].filter(Boolean).join(' ') || addr.suburb || '';
+            const streetVal = [addr.road, addr.house_number].filter(Boolean).join(' ');
             const cityVal = addr.city || addr.town || addr.village || addr.county || '';
             const zipVal = addr.postcode || '';
-            setStreet(streetVal);
-            setCity(cityVal);
-            setZipCode(zipVal);
+            if (streetVal) setStreet(streetVal);
+            if (cityVal) setCity(cityVal);
+            if (zipVal) setZipCode(zipVal);
           }
         } catch {
-          // Geocoding failed silently — coordinates are still set
+          // Reverse geocoding failed silently; coordinates are still set
         }
-
-        setLocationState({ status: 'success' });
       },
-      (error) => {
-        let msg = 'Unable to retrieve your location.';
-        if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Location access denied. Please enter your location manually.';
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          msg = 'Location information is unavailable. Please enter manually.';
-        } else if (error.code === error.TIMEOUT) {
-          msg = 'Location request timed out. Please enter manually.';
+      (err) => {
+        setLocationLoading(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationError('Location access denied. Please enter your location manually.');
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setLocationError('Location unavailable. Please enter your location manually.');
+        } else {
+          setLocationError('Could not fetch location. Please enter your location manually.');
         }
-        setLocationState({ status: 'error', errorMessage: msg });
       },
       { timeout: 10000, maximumAge: 60000 }
     );
   }, [open]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setImages((prev) => [...prev, ...Array.from(e.target.files!)]);
-    }
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newImages: ImagePreview[] = files.map((file) => ({
+      id: Math.random().toString(36).substring(7),
+      file,
+      preview: URL.createObjectURL(file),
+      uploadProgress: 0,
+    }));
+    setImages((prev) => [...prev, ...newImages]);
   };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+  const removeImage = (id: string) => {
+    setImages((prev) => {
+      const image = prev.find((img) => img.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.preview);
+      }
+      return prev.filter((img) => img.id !== id);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitError(null);
+    setError(null);
 
     if (!identity) {
-      setSubmitError('You must be logged in to report an issue.');
+      setError('You must be logged in to report an issue');
       return;
     }
 
     if (!title.trim() || !description.trim()) {
-      setSubmitError('Title and description are required.');
+      setError('Title and description are required');
       return;
     }
 
     try {
+      const imageBlobs: ExternalBlob[] = [];
+
+      for (const image of images) {
+        const arrayBuffer = await image.file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        const blob = ExternalBlob.fromBytes(uint8Array).withUploadProgress((percentage) => {
+          setImages((prev) =>
+            prev.map((img) =>
+              img.id === image.id ? { ...img, uploadProgress: percentage } : img
+            )
+          );
+        });
+        imageBlobs.push(blob);
+      }
+
       const submissionId = `submission-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const now = BigInt(Date.now()) * BigInt(1_000_000);
 
       const location =
         latitude && longitude
@@ -144,283 +165,228 @@ export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDia
           : undefined;
 
       const address =
-        street || city || zipCode
-          ? { street: street.trim(), city: city.trim(), zipCode: zipCode.trim() }
-          : undefined;
+        street || city || zipCode ? { street, city, zipCode } : undefined;
 
       await createIssue.mutateAsync({
         id: submissionId,
         title: title.trim(),
         description: description.trim(),
         category,
-        priority,
-        status: Status.pending,
+        priority: Priority.medium,
+        status: Status.open,
         location,
         address,
         createdBy: identity.getPrincipal(),
-        assignedStaff: undefined,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: BigInt(Date.now() * 1000000),
+        updatedAt: BigInt(Date.now() * 1000000),
         attachments: [],
+        assignedStaff: undefined,
       });
 
-      // Upload images if any
-      if (images.length > 0) {
-        const blobs: ExternalBlob[] = await Promise.all(
-          images.map(async (file) => {
-            const bytes = new Uint8Array(await file.arrayBuffer());
-            return ExternalBlob.fromBytes(bytes);
-          })
-        );
-        await uploadAttachment.mutateAsync({ submissionId, blobs });
+      if (imageBlobs.length > 0) {
+        await uploadAttachments.mutateAsync({
+          submissionId,
+          blobs: imageBlobs,
+        });
       }
 
+      // Reset form
+      setTitle('');
+      setDescription('');
+      setCategory(Category.other);
+      setStreet('');
+      setCity('');
+      setZipCode('');
+      setLatitude('');
+      setLongitude('');
+      setImages([]);
+      setLocationError(null);
       onOpenChange(false);
     } catch (err: any) {
-      setSubmitError(err.message || 'Failed to submit issue. Please try again.');
+      setError(err.message || 'Failed to submit issue');
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-200">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto transition-all duration-300 animate-in fade-in zoom-in-95">
         <DialogHeader>
-          <DialogTitle className="text-navy text-xl font-bold">Report a Civic Issue</DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Fill in the details below to report an issue in your area.
+          <DialogTitle>Report a Civic Issue</DialogTitle>
+          <DialogDescription>
+            Help improve your community by reporting issues that need attention
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          {submitError && (
-            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>{submitError}</span>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
-          {/* Title */}
-          <div className="space-y-1">
-            <Label htmlFor="title" className="text-navy font-medium">
-              Title <span className="text-destructive">*</span>
-            </Label>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={(value) => setCategory(value as Category)}>
+              <SelectTrigger id="category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {categoryOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="title">Title</Label>
             <Input
               id="title"
+              placeholder="Brief description of the issue"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Brief description of the issue"
               required
-              disabled={isSubmitting}
             />
           </div>
 
-          {/* Description */}
-          <div className="space-y-1">
-            <Label htmlFor="description" className="text-navy font-medium">
-              Description <span className="text-destructive">*</span>
-            </Label>
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
+              placeholder="Provide detailed information about the issue"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Provide more details about the issue..."
-              rows={3}
+              rows={4}
               required
-              disabled={isSubmitting}
-              className="resize-none"
             />
           </div>
 
-          {/* Category & Priority */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-navy font-medium">Category</Label>
-              <Select
-                value={category}
-                onValueChange={(v) => setCategory(v as Category)}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={Category.garbage}>Garbage</SelectItem>
-                  <SelectItem value={Category.traffic}>Traffic</SelectItem>
-                  <SelectItem value={Category.streetlight}>Streetlight</SelectItem>
-                  <SelectItem value={Category.potholes}>Potholes</SelectItem>
-                  <SelectItem value={Category.noise}>Noise</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-navy font-medium">Priority</Label>
-              <Select
-                value={priority}
-                onValueChange={(v) => setPriority(v as Priority)}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={Priority.low}>Low</SelectItem>
-                  <SelectItem value={Priority.medium}>Medium</SelectItem>
-                  <SelectItem value={Priority.high}>High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Location Section */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Label className="text-navy font-medium">Location</Label>
-              {locationState.status === 'fetching' && (
-                <span className="flex items-center gap-1 text-xs text-orange">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Detecting your location…
-                </span>
-              )}
-              {locationState.status === 'success' && (
-                <span className="flex items-center gap-1 text-xs text-green-600">
-                  <MapPin className="w-3 h-3" />
-                  Location detected automatically
-                </span>
-              )}
-              {locationState.status === 'error' && (
-                <span className="flex items-center gap-1 text-xs text-destructive">
-                  <AlertCircle className="w-3 h-3" />
-                  {locationState.errorMessage}
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="latitude" className="text-xs text-muted-foreground">
-                  Latitude
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="latitude"
-                    value={latitude}
-                    onChange={(e) => setLatitude(e.target.value)}
-                    placeholder="e.g. 28.6139"
-                    disabled={locationState.status === 'fetching' || isSubmitting}
-                  />
-                  {locationState.status === 'fetching' && (
-                    <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="longitude" className="text-xs text-muted-foreground">
-                  Longitude
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="longitude"
-                    value={longitude}
-                    onChange={(e) => setLongitude(e.target.value)}
-                    placeholder="e.g. 77.2090"
-                    disabled={locationState.status === 'fetching' || isSubmitting}
-                  />
-                  {locationState.status === 'fetching' && (
-                    <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="street" className="text-xs text-muted-foreground">
-                Street Address
-              </Label>
-              <Input
-                id="street"
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-                placeholder="Street / Road name"
-                disabled={locationState.status === 'fetching' || isSubmitting}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="city" className="text-xs text-muted-foreground">
-                  City
-                </Label>
-                <Input
-                  id="city"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="City / Town"
-                  disabled={locationState.status === 'fetching' || isSubmitting}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="zipCode" className="text-xs text-muted-foreground">
-                  ZIP / PIN Code
-                </Label>
-                <Input
-                  id="zipCode"
-                  value={zipCode}
-                  onChange={(e) => setZipCode(e.target.value)}
-                  placeholder="PIN / ZIP"
-                  disabled={locationState.status === 'fetching' || isSubmitting}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Image Upload */}
-          <div className="space-y-2">
-            <Label className="text-navy font-medium">Photos (optional)</Label>
-            <div
-              className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 text-center cursor-pointer hover:border-orange/50 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Click to upload photos</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={handleImageChange}
-                disabled={isSubmitting}
-              />
-            </div>
+            <Label htmlFor="images">Photos (optional)</Label>
+            <Input
+              id="images"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelect}
+              disabled={isSubmitting}
+            />
             {images.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {images.map((file, idx) => (
-                  <div key={idx} className="relative group">
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {images.map((image) => (
+                  <div key={image.id} className="relative group">
                     <img
-                      src={URL.createObjectURL(file)}
-                      alt={`preview-${idx}`}
-                      className="w-16 h-16 object-cover rounded-md border border-muted transition-transform group-hover:scale-105"
+                      src={image.preview}
+                      alt="Preview"
+                      className="h-24 w-full rounded-lg object-cover transition-all duration-300 group-hover:scale-105"
                     />
                     <button
                       type="button"
-                      onClick={() => removeImage(idx)}
+                      onClick={() => removeImage(image.id)}
+                      className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-all duration-300 group-hover:opacity-100 hover:scale-110"
                       disabled={isSubmitting}
-                      className="absolute -top-1 -right-1 bg-destructive text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <X className="w-2.5 h-2.5" />
+                      <X className="h-3 w-3" />
                     </button>
+                    {image.uploadProgress > 0 && image.uploadProgress < 100 && (
+                      <div className="absolute bottom-0 left-0 right-0 p-1">
+                        <Progress value={image.uploadProgress} className="h-1" />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Submit */}
-          <div className="flex gap-3 pt-2">
+          {/* Location Section */}
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-orange" />
+              <Label className="text-sm font-semibold">Location</Label>
+              {locationLoading && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Fetching your location…
+                </span>
+              )}
+              {!locationLoading && latitude && longitude && (
+                <span className="text-xs text-green-600 font-medium">✓ Location detected</span>
+              )}
+            </div>
+
+            {locationError && (
+              <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1">{locationError}</p>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="latitude">Latitude</Label>
+                <Input
+                  id="latitude"
+                  type="number"
+                  step="any"
+                  placeholder="e.g., 40.7128"
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                  disabled={locationLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="longitude">Longitude</Label>
+                <Input
+                  id="longitude"
+                  type="number"
+                  step="any"
+                  placeholder="e.g., -74.0060"
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                  disabled={locationLoading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="street">Street Address</Label>
+              <Input
+                id="street"
+                placeholder="123 Main St"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                disabled={locationLoading}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  placeholder="New York"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  disabled={locationLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zipCode">Zip Code</Label>
+                <Input
+                  id="zipCode"
+                  placeholder="10001"
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                  disabled={locationLoading}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
-              className="flex-1"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
@@ -428,17 +394,11 @@ export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDia
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-orange hover:bg-orange/90 text-white font-semibold"
-              disabled={isSubmitting || !title.trim() || !description.trim()}
+              disabled={isSubmitting}
+              className="transition-all duration-300 hover:scale-105"
             >
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Submitting…
-                </span>
-              ) : (
-                'Submit Report'
-              )}
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Submitting...' : 'Submit Report'}
             </Button>
           </div>
         </form>

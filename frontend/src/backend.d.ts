@@ -77,11 +77,10 @@ export interface UserProfile {
     phone?: string;
 }
 export enum Category {
-    garbage = "garbage",
-    traffic = "traffic",
+    streetlights = "streetlights",
+    other = "other",
     potholes = "potholes",
-    noise = "noise",
-    streetlight = "streetlight"
+    waste = "waste"
 }
 export enum LoginErrorCode {
     internalError = "internalError",
@@ -94,8 +93,10 @@ export enum Priority {
     medium = "medium"
 }
 export enum Status {
+    reopened = "reopened",
     resolved = "resolved",
-    pending = "pending",
+    closed = "closed",
+    open = "open",
     inProgress = "inProgress"
 }
 export enum UserRole {
@@ -117,10 +118,11 @@ export interface backendInterface {
     deleteSubmission(id: string): Promise<void>;
     getAllSubmissions(): Promise<Array<Submission>>;
     getAnalytics(): Promise<{
-        pendingSubmissions: bigint;
+        closedSubmissions: bigint;
         inProgressSubmissions: bigint;
         totalSubmissions: bigint;
         resolvedSubmissions: bigint;
+        openSubmissions: bigint;
     }>;
     getAssignedSubmissions(): Promise<Array<Submission>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -132,17 +134,16 @@ export interface backendInterface {
     getSubmissionByCategory(category: Category): Promise<Array<Submission>>;
     getSubmissionVersions(id: string): Promise<Array<string>>;
     getSubmissionsByStatus(status: Status): Promise<Array<Submission>>;
-    getSubmissionsByUser(userId: Principal): Promise<Array<Submission>>;
+    getSubmissionsSortedByUpvotes(): Promise<Array<Submission>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getVoteCount(submissionId: string): Promise<{
         upvotes: bigint;
         downvotes: bigint;
     }>;
     isCallerAdmin(): Promise<boolean>;
-    login(): Promise<LoginResult>;
+    login(isOperator: boolean): Promise<LoginResult>;
     removeVote(submissionId: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    seedDemoData(): Promise<void>;
     setMunicipalStaffStatus(user: Principal, isStaff: boolean): Promise<void>;
     updateSubmission(id: string, newPayload: Submission): Promise<void>;
     updateSubmissionStatus(id: string, newStatus: Status, notes: string): Promise<void>;

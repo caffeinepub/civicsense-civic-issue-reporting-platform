@@ -14,45 +14,42 @@ export default function ProfileSetupModal() {
   const saveProfile = useSaveCallerUserProfile();
   const { data: existingProfile } = useGetCallerUserProfile();
 
-  // Check if user intended to be municipal staff (for UI display only)
-  // Note: actual isMunicipalStaff flag can only be granted by an admin
-  const [isMunicipalIntent, setIsMunicipalIntent] = useState(false);
+  // Check if user intended to be municipal staff
+  const [isMunicipalStaff, setIsMunicipalStaff] = useState(false);
 
   useEffect(() => {
     const intendedRole = sessionStorage.getItem('intendedRole');
     if (intendedRole === 'municipal') {
-      setIsMunicipalIntent(true);
+      setIsMunicipalStaff(true);
     }
-
+    
     // Pre-fill with existing profile data if available
     if (existingProfile) {
-      setIsMunicipalIntent(existingProfile.isMunicipalStaff);
+      setIsMunicipalStaff(existingProfile.isMunicipalStaff);
     }
   }, [existingProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!name.trim() || !email.trim()) {
       return;
     }
 
-    // isMunicipalStaff is always false for new profiles (backend enforces this).
-    // Only admins can grant municipal staff status via setMunicipalStaffStatus.
     const profile: UserProfile = {
       name: name.trim(),
       email: email.trim(),
       phone: phone.trim() || undefined,
-      isMunicipalStaff: false,
+      isMunicipalStaff,
     };
 
     await saveProfile.mutateAsync(profile);
-
+    
     // Clear the intended role after profile setup
     sessionStorage.removeItem('intendedRole');
 
-    // Scroll to appropriate section based on intent
-    if (isMunicipalIntent) {
+    // Scroll to appropriate section based on role
+    if (isMunicipalStaff) {
       setTimeout(() => {
         const dashboardSection = document.getElementById('dashboard');
         if (dashboardSection) {
@@ -67,7 +64,7 @@ export default function ProfileSetupModal() {
       <DialogContent className="sm:max-w-md modal-centered" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <div className="flex items-center justify-center mb-2">
-            {isMunicipalIntent ? (
+            {isMunicipalStaff ? (
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800">
                 <Building2 className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
@@ -79,8 +76,8 @@ export default function ProfileSetupModal() {
           </div>
           <DialogTitle className="text-center">Complete Your Profile</DialogTitle>
           <DialogDescription className="text-center">
-            {isMunicipalIntent
-              ? 'Set up your profile to get started with CivicSense'
+            {isMunicipalStaff 
+              ? 'Set up your municipal operator profile to access the dashboard'
               : 'Please provide your information to get started with CivicSense'
             }
           </DialogDescription>
@@ -131,9 +128,27 @@ export default function ProfileSetupModal() {
             />
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
+          {isMunicipalStaff && (
+            <div className="rounded-lg bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 p-4 border border-orange-200 dark:border-orange-800">
+              <div className="flex items-start gap-3">
+                <Building2 className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-orange-900 dark:text-orange-100">Municipal Operator Access</p>
+                  <p className="text-xs mt-1 text-orange-800 dark:text-orange-200">
+                    Your account is configured with municipal staff permissions. You'll have access to the dashboard and analytics.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Button 
+            type="submit" 
+            className={`w-full transition-all duration-300 ${
+              isMunicipalStaff 
+                ? 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800' 
+                : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+            }`}
             disabled={saveProfile.isPending || !name.trim() || !email.trim()}
           >
             {saveProfile.isPending ? (

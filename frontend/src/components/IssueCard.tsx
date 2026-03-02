@@ -11,23 +11,26 @@ interface IssueCardProps {
 }
 
 const statusColors: Record<Status, string> = {
-  [Status.pending]: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  [Status.open]: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
   [Status.inProgress]: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
   [Status.resolved]: 'bg-green-500/10 text-green-700 dark:text-green-400',
+  [Status.reopened]: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
+  [Status.closed]: 'bg-gray-500/10 text-gray-700 dark:text-gray-400',
 };
 
 const statusLabels: Record<Status, string> = {
-  [Status.pending]: 'Pending',
+  [Status.open]: 'Open',
   [Status.inProgress]: 'In Progress',
   [Status.resolved]: 'Resolved',
+  [Status.reopened]: 'Reopened',
+  [Status.closed]: 'Closed',
 };
 
 const categoryLabels: Record<Category, string> = {
-  [Category.garbage]: 'Garbage',
-  [Category.traffic]: 'Traffic',
-  [Category.streetlight]: 'Streetlight',
   [Category.potholes]: 'Pothole',
-  [Category.noise]: 'Noise',
+  [Category.streetlights]: 'Streetlight',
+  [Category.waste]: 'Waste',
+  [Category.other]: 'Other',
 };
 
 export default function IssueCard({ issue, onClick }: IssueCardProps) {
@@ -40,8 +43,8 @@ export default function IssueCard({ issue, onClick }: IssueCardProps) {
   };
 
   return (
-    <Card
-      className="cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-lg"
+    <Card 
+      className="cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-lg" 
       onClick={onClick}
     >
       <CardHeader className="pb-3">

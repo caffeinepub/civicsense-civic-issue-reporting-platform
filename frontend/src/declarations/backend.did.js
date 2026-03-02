@@ -25,8 +25,10 @@ export const UserRole = IDL.Variant({
   'guest' : IDL.Null,
 });
 export const Status = IDL.Variant({
+  'reopened' : IDL.Null,
   'resolved' : IDL.Null,
-  'pending' : IDL.Null,
+  'closed' : IDL.Null,
+  'open' : IDL.Null,
   'inProgress' : IDL.Null,
 });
 export const Time = IDL.Int;
@@ -36,11 +38,10 @@ export const Address = IDL.Record({
   'zipCode' : IDL.Text,
 });
 export const Category = IDL.Variant({
-  'garbage' : IDL.Null,
-  'traffic' : IDL.Null,
+  'streetlights' : IDL.Null,
+  'other' : IDL.Null,
   'potholes' : IDL.Null,
-  'noise' : IDL.Null,
-  'streetlight' : IDL.Null,
+  'waste' : IDL.Null,
 });
 export const Priority = IDL.Variant({
   'low' : IDL.Null,
@@ -155,10 +156,11 @@ export const idlService = IDL.Service({
       [],
       [
         IDL.Record({
-          'pendingSubmissions' : IDL.Nat,
+          'closedSubmissions' : IDL.Nat,
           'inProgressSubmissions' : IDL.Nat,
           'totalSubmissions' : IDL.Nat,
           'resolvedSubmissions' : IDL.Nat,
+          'openSubmissions' : IDL.Nat,
         }),
       ],
       ['query'],
@@ -185,8 +187,8 @@ export const idlService = IDL.Service({
       [IDL.Vec(Submission)],
       ['query'],
     ),
-  'getSubmissionsByUser' : IDL.Func(
-      [IDL.Principal],
+  'getSubmissionsSortedByUpvotes' : IDL.Func(
+      [],
       [IDL.Vec(Submission)],
       ['query'],
     ),
@@ -201,10 +203,9 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'login' : IDL.Func([], [LoginResult], []),
+  'login' : IDL.Func([IDL.Bool], [LoginResult], []),
   'removeVote' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'seedDemoData' : IDL.Func([], [], []),
   'setMunicipalStaffStatus' : IDL.Func([IDL.Principal, IDL.Bool], [], []),
   'updateSubmission' : IDL.Func([IDL.Text, Submission], [], []),
   'updateSubmissionStatus' : IDL.Func([IDL.Text, Status, IDL.Text], [], []),
@@ -231,8 +232,10 @@ export const idlFactory = ({ IDL }) => {
     'guest' : IDL.Null,
   });
   const Status = IDL.Variant({
+    'reopened' : IDL.Null,
     'resolved' : IDL.Null,
-    'pending' : IDL.Null,
+    'closed' : IDL.Null,
+    'open' : IDL.Null,
     'inProgress' : IDL.Null,
   });
   const Time = IDL.Int;
@@ -242,11 +245,10 @@ export const idlFactory = ({ IDL }) => {
     'zipCode' : IDL.Text,
   });
   const Category = IDL.Variant({
-    'garbage' : IDL.Null,
-    'traffic' : IDL.Null,
+    'streetlights' : IDL.Null,
+    'other' : IDL.Null,
     'potholes' : IDL.Null,
-    'noise' : IDL.Null,
-    'streetlight' : IDL.Null,
+    'waste' : IDL.Null,
   });
   const Priority = IDL.Variant({
     'low' : IDL.Null,
@@ -361,10 +363,11 @@ export const idlFactory = ({ IDL }) => {
         [],
         [
           IDL.Record({
-            'pendingSubmissions' : IDL.Nat,
+            'closedSubmissions' : IDL.Nat,
             'inProgressSubmissions' : IDL.Nat,
             'totalSubmissions' : IDL.Nat,
             'resolvedSubmissions' : IDL.Nat,
+            'openSubmissions' : IDL.Nat,
           }),
         ],
         ['query'],
@@ -395,8 +398,8 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(Submission)],
         ['query'],
       ),
-    'getSubmissionsByUser' : IDL.Func(
-        [IDL.Principal],
+    'getSubmissionsSortedByUpvotes' : IDL.Func(
+        [],
         [IDL.Vec(Submission)],
         ['query'],
       ),
@@ -411,10 +414,9 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'login' : IDL.Func([], [LoginResult], []),
+    'login' : IDL.Func([IDL.Bool], [LoginResult], []),
     'removeVote' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'seedDemoData' : IDL.Func([], [], []),
     'setMunicipalStaffStatus' : IDL.Func([IDL.Principal, IDL.Bool], [], []),
     'updateSubmission' : IDL.Func([IDL.Text, Submission], [], []),
     'updateSubmissionStatus' : IDL.Func([IDL.Text, Status, IDL.Text], [], []),

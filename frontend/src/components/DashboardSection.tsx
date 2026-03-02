@@ -1,19 +1,17 @@
-import { useGetAnalytics, useGetAllIssues, useGetAssignedIssues, useSeedDemoData } from '../hooks/useQueries';
+import { useGetAnalytics, useGetAllIssues, useGetAssignedIssues } from '../hooks/useQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Loader2, AlertCircle, Clock, CheckCircle, TrendingUp, Database } from 'lucide-react';
+import { Loader2, AlertCircle, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
 import { Category } from '../backend';
 import IssueManagementTable from './IssueManagementTable';
 
-const COLORS = ['#f97316', '#eab308', '#22c55e', '#3b82f6', '#6b7280'];
+const COLORS = ['#3b82f6', '#eab308', '#22c55e', '#f97316', '#6b7280'];
 
 export default function DashboardSection() {
   const { data: analytics, isLoading: analyticsLoading } = useGetAnalytics();
   const { data: allIssues = [], isLoading: issuesLoading } = useGetAllIssues();
   const { data: assignedIssues = [] } = useGetAssignedIssues();
-  const seedDemoData = useSeedDemoData();
 
   if (analyticsLoading || issuesLoading) {
     return (
@@ -28,44 +26,29 @@ export default function DashboardSection() {
   }
 
   const statusData = [
-    { name: 'Pending', value: Number(analytics?.pendingSubmissions || 0), color: COLORS[0] },
+    { name: 'Open', value: Number(analytics?.openSubmissions || 0), color: COLORS[0] },
     { name: 'In Progress', value: Number(analytics?.inProgressSubmissions || 0), color: COLORS[1] },
     { name: 'Resolved', value: Number(analytics?.resolvedSubmissions || 0), color: COLORS[2] },
+    { name: 'Closed', value: Number(analytics?.closedSubmissions || 0), color: COLORS[4] },
   ];
 
   const categoryData = [
-    { name: 'Garbage', value: allIssues.filter((i) => i.category === Category.garbage).length },
-    { name: 'Traffic', value: allIssues.filter((i) => i.category === Category.traffic).length },
-    { name: 'Streetlight', value: allIssues.filter((i) => i.category === Category.streetlight).length },
     { name: 'Potholes', value: allIssues.filter((i) => i.category === Category.potholes).length },
-    { name: 'Noise', value: allIssues.filter((i) => i.category === Category.noise).length },
+    { name: 'Streetlights', value: allIssues.filter((i) => i.category === Category.streetlights).length },
+    { name: 'Waste', value: allIssues.filter((i) => i.category === Category.waste).length },
+    { name: 'Other', value: allIssues.filter((i) => i.category === Category.other).length },
   ];
 
   return (
     <section id="dashboard" className="bg-background py-12">
       <div className="container px-4">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Municipal Dashboard</h2>
-            <p className="text-muted-foreground">Analytics and issue management</p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => seedDemoData.mutate()}
-            disabled={seedDemoData.isPending}
-            className="flex items-center gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-          >
-            {seedDemoData.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Database className="h-4 w-4" />
-            )}
-            {seedDemoData.isPending ? 'Seeding Data…' : 'Seed Demo Data'}
-          </Button>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold tracking-tight">Municipal Dashboard</h2>
+          <p className="text-muted-foreground">Analytics and issue management</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Issues</CardTitle>
@@ -77,11 +60,11 @@ export default function DashboardSection() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-500" />
+              <CardTitle className="text-sm font-medium">Open</CardTitle>
+              <AlertCircle className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Number(analytics?.pendingSubmissions || 0)}</div>
+              <div className="text-2xl font-bold">{Number(analytics?.openSubmissions || 0)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -100,6 +83,15 @@ export default function DashboardSection() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{Number(analytics?.resolvedSubmissions || 0)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Closed</CardTitle>
+              <XCircle className="h-4 w-4 text-gray-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{Number(analytics?.closedSubmissions || 0)}</div>
             </CardContent>
           </Card>
         </div>
@@ -145,7 +137,7 @@ export default function DashboardSection() {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#f97316" />
+                  <Bar dataKey="value" fill="#3b82f6" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
