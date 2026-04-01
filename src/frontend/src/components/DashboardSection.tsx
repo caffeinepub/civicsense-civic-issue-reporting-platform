@@ -1,12 +1,35 @@
-import { useGetAnalytics, useGetAllIssues, useGetAssignedIssues } from '../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Loader2, AlertCircle, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
-import { Category } from '../backend';
-import IssueManagementTable from './IssueManagementTable';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Loader2,
+  TrendingUp,
+  XCircle,
+} from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Category } from "../backend";
+import {
+  useGetAllIssues,
+  useGetAnalytics,
+  useGetAssignedIssues,
+} from "../hooks/useQueries";
+import IssueManagementTable from "./IssueManagementTable";
 
-const COLORS = ['#3b82f6', '#eab308', '#22c55e', '#f97316', '#6b7280'];
+const COLORS = ["#3b82f6", "#eab308", "#22c55e", "#f97316", "#6b7280"];
 
 export default function DashboardSection() {
   const { data: analytics, isLoading: analyticsLoading } = useGetAnalytics();
@@ -26,36 +49,73 @@ export default function DashboardSection() {
   }
 
   const statusData = [
-    { name: 'Open', value: Number(analytics?.openSubmissions || 0), color: COLORS[0] },
-    { name: 'In Progress', value: Number(analytics?.inProgressSubmissions || 0), color: COLORS[1] },
-    { name: 'Resolved', value: Number(analytics?.resolvedSubmissions || 0), color: COLORS[2] },
-    { name: 'Closed', value: Number(analytics?.closedSubmissions || 0), color: COLORS[4] },
+    {
+      name: "Open",
+      value: Number(analytics?.openSubmissions || 0),
+      color: COLORS[0],
+    },
+    {
+      name: "In Progress",
+      value: Number(analytics?.inProgressSubmissions || 0),
+      color: COLORS[1],
+    },
+    {
+      name: "Resolved",
+      value: Number(analytics?.resolvedSubmissions || 0),
+      color: COLORS[2],
+    },
+    {
+      name: "Closed",
+      value: Number(analytics?.closedSubmissions || 0),
+      color: COLORS[4],
+    },
   ];
 
   const categoryData = [
-    { name: 'Potholes', value: allIssues.filter((i) => i.category === Category.potholes).length },
-    { name: 'Streetlights', value: allIssues.filter((i) => i.category === Category.streetlights).length },
-    { name: 'Waste', value: allIssues.filter((i) => i.category === Category.waste).length },
-    { name: 'Other', value: allIssues.filter((i) => i.category === Category.other).length },
+    {
+      name: "Potholes",
+      value: allIssues.filter((i) => i.category === Category.potholes).length,
+    },
+    {
+      name: "Streetlights",
+      value: allIssues.filter((i) => i.category === Category.streetlights)
+        .length,
+    },
+    {
+      name: "Waste",
+      value: allIssues.filter((i) => i.category === Category.waste).length,
+    },
+    {
+      name: "Other",
+      value: allIssues.filter((i) => i.category === Category.other).length,
+    },
   ];
 
   return (
     <section id="dashboard" className="bg-background py-12">
       <div className="container px-4">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold tracking-tight">Municipal Dashboard</h2>
-          <p className="text-muted-foreground">Analytics and issue management</p>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Municipal Dashboard
+          </h2>
+          <p className="text-muted-foreground">
+            Analytics and issue management
+          </p>
         </div>
 
         {/* Stats Cards */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Issues</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Issues
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Number(analytics?.totalSubmissions || 0)}</div>
+              <div className="text-2xl font-bold">
+                {Number(analytics?.totalSubmissions || 0)}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -64,7 +124,9 @@ export default function DashboardSection() {
               <AlertCircle className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Number(analytics?.openSubmissions || 0)}</div>
+              <div className="text-2xl font-bold">
+                {Number(analytics?.openSubmissions || 0)}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -73,7 +135,9 @@ export default function DashboardSection() {
               <Clock className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Number(analytics?.inProgressSubmissions || 0)}</div>
+              <div className="text-2xl font-bold">
+                {Number(analytics?.inProgressSubmissions || 0)}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -82,7 +146,9 @@ export default function DashboardSection() {
               <CheckCircle className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Number(analytics?.resolvedSubmissions || 0)}</div>
+              <div className="text-2xl font-bold">
+                {Number(analytics?.resolvedSubmissions || 0)}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -91,7 +157,9 @@ export default function DashboardSection() {
               <XCircle className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Number(analytics?.closedSubmissions || 0)}</div>
+              <div className="text-2xl font-bold">
+                {Number(analytics?.closedSubmissions || 0)}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -110,13 +178,15 @@ export default function DashboardSection() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) =>
+                      `${name}: ${(percent * 100).toFixed(0)}%`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    {statusData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -147,8 +217,12 @@ export default function DashboardSection() {
         {/* Issue Management */}
         <Tabs defaultValue="all" className="w-full">
           <TabsList>
-            <TabsTrigger value="all">All Issues ({allIssues.length})</TabsTrigger>
-            <TabsTrigger value="assigned">Assigned to Me ({assignedIssues.length})</TabsTrigger>
+            <TabsTrigger value="all">
+              All Issues ({allIssues.length})
+            </TabsTrigger>
+            <TabsTrigger value="assigned">
+              Assigned to Me ({assignedIssues.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all">

@@ -187,6 +187,11 @@ export const idlService = IDL.Service({
       [IDL.Vec(Submission)],
       ['query'],
     ),
+  'getSubmissionsSortedByUpvotes' : IDL.Func(
+      [],
+      [IDL.Vec(Submission)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -390,6 +395,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getSubmissionsByStatus' : IDL.Func(
         [Status],
+        [IDL.Vec(Submission)],
+        ['query'],
+      ),
+    'getSubmissionsSortedByUpvotes' : IDL.Func(
+        [],
         [IDL.Vec(Submission)],
         ['query'],
       ),

@@ -1,52 +1,78 @@
-import { useState } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import type { Submission } from '../backend';
-import { Status, Category } from '../backend';
-import { useUpdateIssueStatus } from '../hooks/useQueries';
-import { Loader2, Edit } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { Edit, Loader2 } from "lucide-react";
+import { useState } from "react";
+import type { Submission } from "../backend";
+import { Category, Status } from "../backend";
+import { useUpdateIssueStatus } from "../hooks/useQueries";
 
 interface IssueManagementTableProps {
   issues: Submission[];
 }
 
 const statusColors: Record<Status, string> = {
-  [Status.open]: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
-  [Status.inProgress]: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
-  [Status.resolved]: 'bg-green-500/10 text-green-700 dark:text-green-400',
-  [Status.reopened]: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
-  [Status.closed]: 'bg-gray-500/10 text-gray-700 dark:text-gray-400',
+  [Status.open]: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  [Status.inProgress]: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+  [Status.resolved]: "bg-green-500/10 text-green-700 dark:text-green-400",
+  [Status.reopened]: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+  [Status.closed]: "bg-gray-500/10 text-gray-700 dark:text-gray-400",
 };
 
 const statusLabels: Record<Status, string> = {
-  [Status.open]: 'Open',
-  [Status.inProgress]: 'In Progress',
-  [Status.resolved]: 'Resolved',
-  [Status.reopened]: 'Reopened',
-  [Status.closed]: 'Closed',
+  [Status.open]: "Open",
+  [Status.inProgress]: "In Progress",
+  [Status.resolved]: "Resolved",
+  [Status.reopened]: "Reopened",
+  [Status.closed]: "Closed",
 };
 
 const categoryLabels: Record<Category, string> = {
-  [Category.potholes]: 'Pothole',
-  [Category.streetlights]: 'Streetlight',
-  [Category.waste]: 'Waste',
-  [Category.other]: 'Other',
+  [Category.potholes]: "Pothole",
+  [Category.streetlights]: "Streetlight",
+  [Category.waste]: "Waste",
+  [Category.other]: "Other",
 };
 
-export default function IssueManagementTable({ issues }: IssueManagementTableProps) {
+export default function IssueManagementTable({
+  issues,
+}: IssueManagementTableProps) {
   const [selectedIssue, setSelectedIssue] = useState<Submission | null>(null);
   const [newStatus, setNewStatus] = useState<Status>(Status.open);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
   const updateStatus = useUpdateIssueStatus();
 
   const formatDate = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) / 1000000);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   const handleUpdateStatus = () => {
@@ -56,9 +82,9 @@ export default function IssueManagementTable({ issues }: IssueManagementTablePro
       {
         onSuccess: () => {
           setSelectedIssue(null);
-          setNotes('');
+          setNotes("");
         },
-      }
+      },
     );
   };
 
@@ -90,7 +116,10 @@ export default function IssueManagementTable({ issues }: IssueManagementTablePro
                 <TableCell className="font-medium">{issue.title}</TableCell>
                 <TableCell>{categoryLabels[issue.category]}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={statusColors[issue.status]}>
+                  <Badge
+                    variant="outline"
+                    className={statusColors[issue.status]}
+                  >
                     {statusLabels[issue.status]}
                   </Badge>
                 </TableCell>
@@ -118,25 +147,49 @@ export default function IssueManagementTable({ issues }: IssueManagementTablePro
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <Label>New Status</Label>
-                          <Select value={newStatus} onValueChange={(value) => setNewStatus(value as Status)}>
+                          <Select
+                            value={newStatus}
+                            onValueChange={(value) =>
+                              setNewStatus(value as Status)
+                            }
+                          >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value={Status.open}>Open</SelectItem>
-                              <SelectItem value={Status.inProgress}>In Progress</SelectItem>
-                              <SelectItem value={Status.resolved}>Resolved</SelectItem>
-                              <SelectItem value={Status.reopened}>Reopened</SelectItem>
-                              <SelectItem value={Status.closed}>Closed</SelectItem>
+                              <SelectItem value={Status.inProgress}>
+                                In Progress
+                              </SelectItem>
+                              <SelectItem value={Status.resolved}>
+                                Resolved
+                              </SelectItem>
+                              <SelectItem value={Status.reopened}>
+                                Reopened
+                              </SelectItem>
+                              <SelectItem value={Status.closed}>
+                                Closed
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
                           <Label>Notes</Label>
-                          <Textarea placeholder="Add notes about this status change..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
+                          <Textarea
+                            placeholder="Add notes about this status change..."
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            rows={4}
+                          />
                         </div>
-                        <Button onClick={handleUpdateStatus} disabled={updateStatus.isPending} className="w-full">
-                          {updateStatus.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button
+                          onClick={handleUpdateStatus}
+                          disabled={updateStatus.isPending}
+                          className="w-full"
+                        >
+                          {updateStatus.isPending && (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          )}
                           Update Status
                         </Button>
                       </div>

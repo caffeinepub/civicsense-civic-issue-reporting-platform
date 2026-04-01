@@ -1,26 +1,26 @@
-// INITIAL DESIGN DOCUMENTATION:
-// The initial Header design featured a clean, sticky header with standard shadcn/ui components.
-// - Branding: MapPin icon + "CivicSense" text
-// - Navigation: Simple "Home" and "About" links for unauthenticated users
-// - Auth UI: Standard button for login, avatar dropdown menu for authenticated users
-// - Mobile: Sheet component with hamburger menu icon
-// - Styling: Standard theme tokens (foreground, primary, muted-foreground) without gradients
-// - No special effects or custom styling beyond shadcn/ui defaults
-//
-// CURRENT VERSION 35 STATE:
-// This implementation matches the initial design closely. The component structure, navigation,
-// and authentication UI follow the original specifications with standard theme styling.
-
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useIsCallerAdmin } from '../hooks/useQueries';
-import { useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MapPin, Menu, LogOut, Shield, LayoutDashboard } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
-import { openLoginModal } from '../utils/openLoginModal';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Hexagon,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Shield,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useGetCallerUserProfile, useIsCallerAdmin } from "../hooks/useQueries";
+import { openLoginModal } from "../utils/openLoginModal";
 
 export default function Header() {
   const { clear, loginStatus, identity } = useInternetIdentity();
@@ -30,19 +30,19 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
+  const isLoggingIn = loginStatus === "logging-in";
 
   const handleLogout = async () => {
     await clear();
     queryClient.clear();
-    sessionStorage.removeItem('intendedRole');
+    sessionStorage.removeItem("intendedRole");
   };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
+      .split(" ")
       .map((n) => n[0])
-      .join('')
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -52,7 +52,7 @@ export default function Header() {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     setMobileMenuOpen(false);
   };
@@ -61,168 +61,280 @@ export default function Header() {
     openLoginModal();
   };
 
-  const handleMobileLoginClick = () => {
-    setMobileMenuOpen(false);
-    setTimeout(() => {
-      openLoginModal();
-    }, 300);
+  const handleSignUpClick = () => {
+    openLoginModal();
+  };
+
+  const handleAuthorityPortalClick = () => {
+    openLoginModal();
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <MapPin className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold text-foreground">CivicSense</h1>
-        </div>
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white shadow-sm">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
+        {/* Logo */}
+        <button
+          type="button"
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        >
+          <Hexagon className="h-8 w-8 fill-navy text-navy" />
+          <span className="text-xl font-bold text-navy">CivicSense</span>
+        </button>
 
+        {/* Desktop Navigation - Center */}
         {!isAuthenticated && (
-          <nav className="hidden items-center gap-6 md:flex">
+          <nav className="hidden items-center gap-8 md:flex">
             <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-sm font-medium text-foreground hover:text-primary"
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="text-sm font-medium text-navy transition-colors hover:text-orange"
             >
               Home
             </button>
             <button
-              onClick={() => scrollToSection('about')}
-              className="text-sm font-medium text-foreground hover:text-primary"
+              type="button"
+              onClick={() => scrollToSection("how-it-works")}
+              className="text-sm font-medium text-navy transition-colors hover:text-orange"
+            >
+              How It Works
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("report-issue")}
+              className="text-sm font-medium text-navy transition-colors hover:text-orange"
+            >
+              Report Issue
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("about")}
+              className="text-sm font-medium text-navy transition-colors hover:text-orange"
             >
               About
             </button>
           </nav>
         )}
 
-        <div className="flex items-center gap-3">
+        {/* Desktop Auth Buttons / User Menu */}
+        <div className="hidden items-center gap-3 md:flex">
           {isAuthenticated && userProfile ? (
             <>
-              <div className="hidden md:flex md:items-center md:gap-3">
-                {isMunicipalStaff && (
+              {isMunicipalStaff && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => scrollToSection("dashboard")}
+                  className="text-navy hover:bg-orange/10 hover:text-orange"
+                >
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={() => scrollToSection('dashboard')}
+                    className="relative h-9 w-9 rounded-full"
                   >
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    Dashboard
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback className="bg-orange text-sm font-semibold text-white">
+                        {getInitials(userProfile.name)}
+                      </AvatarFallback>
+                    </Avatar>
                   </Button>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {getInitials(userProfile.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{userProfile.name}</p>
-                        <p className="text-xs leading-none text-muted-foreground">{userProfile.email}</p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {isMunicipalStaff && (
-                      <DropdownMenuItem disabled>
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>{isAdmin ? 'Admin' : 'Municipal Staff'}</span>
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Logout</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild className="md:hidden">
-                  <Button variant="ghost" size="icon">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-64">
-                  <div className="flex flex-col gap-4 py-4">
-                    <div className="flex items-center gap-3 border-b pb-4">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {getInitials(userProfile.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <p className="text-sm font-medium">{userProfile.name}</p>
-                        <p className="text-xs text-muted-foreground">{userProfile.email}</p>
-                      </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{userProfile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {userProfile.email}
+                      </p>
                     </div>
-                    {isMunicipalStaff && (
-                      <Button
-                        variant="ghost"
-                        className="justify-start"
-                        onClick={() => scrollToSection('dashboard')}
-                      >
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Button>
-                    )}
-                    <Button variant="ghost" className="justify-start" onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {isMunicipalStaff && (
+                    <DropdownMenuItem disabled className="cursor-default">
+                      <Shield className="mr-2 h-4 w-4 text-orange" />
+                      <span>{isAdmin ? "Admin" : "Municipal Staff"}</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <>
-              <Button
+              {/* Login text link */}
+              <button
+                type="button"
                 onClick={handleLoginClick}
                 disabled={isLoggingIn}
-                className="hidden md:inline-flex"
+                className="text-sm font-medium text-navy transition-colors hover:text-orange disabled:opacity-50"
               >
-                {isLoggingIn ? 'Logging in...' : 'Login'}
+                {isLoggingIn ? "Logging in..." : "Login"}
+              </button>
+
+              {/* Sign Up outlined button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignUpClick}
+                disabled={isLoggingIn}
+                className="border-navy text-navy hover:bg-navy hover:text-white"
+              >
+                Sign Up
               </Button>
 
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild className="md:hidden">
-                  <Button variant="ghost" size="icon">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-64">
-                  <div className="flex flex-col gap-4 py-4">
-                    <button
-                      onClick={() => {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                        setMobileMenuOpen(false);
-                      }}
-                      className="text-left text-sm font-medium text-foreground hover:text-primary"
-                    >
-                      Home
-                    </button>
-                    <button
-                      onClick={() => scrollToSection('about')}
-                      className="text-left text-sm font-medium text-foreground hover:text-primary"
-                    >
-                      About
-                    </button>
-                    <Button
-                      onClick={handleMobileLoginClick}
-                      disabled={isLoggingIn}
-                      className="mt-4"
-                    >
-                      {isLoggingIn ? 'Logging in...' : 'Login'}
-                    </Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
+              {/* Authority Portal orange button */}
+              <Button
+                size="sm"
+                onClick={handleAuthorityPortalClick}
+                disabled={isLoggingIn}
+                className="bg-orange text-white hover:bg-orange/90"
+              >
+                Authority Portal
+              </Button>
             </>
           )}
         </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="text-navy md:hidden"
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Menu className="h-6 w-6" />
+          )}
+        </button>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="border-t bg-white md:hidden">
+          <div className="container mx-auto space-y-3 px-4 py-4">
+            {!isAuthenticated && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full py-2 text-left text-sm font-medium text-navy hover:text-orange"
+                >
+                  Home
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("how-it-works")}
+                  className="block w-full py-2 text-left text-sm font-medium text-navy hover:text-orange"
+                >
+                  How It Works
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("report-issue")}
+                  className="block w-full py-2 text-left text-sm font-medium text-navy hover:text-orange"
+                >
+                  Report Issue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("about")}
+                  className="block w-full py-2 text-left text-sm font-medium text-navy hover:text-orange"
+                >
+                  About
+                </button>
+                <div className="space-y-2 border-t pt-3">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-navy hover:text-orange"
+                    onClick={() => {
+                      handleLoginClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={isLoggingIn}
+                  >
+                    {isLoggingIn ? "Logging in..." : "Login"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full border-navy text-navy hover:bg-navy hover:text-white"
+                    onClick={() => {
+                      handleSignUpClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={isLoggingIn}
+                  >
+                    Sign Up
+                  </Button>
+                  <Button
+                    className="w-full bg-orange text-white hover:bg-orange/90"
+                    onClick={() => {
+                      handleAuthorityPortalClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={isLoggingIn}
+                  >
+                    Authority Portal
+                  </Button>
+                </div>
+              </>
+            )}
+            {isAuthenticated && userProfile && (
+              <>
+                <div className="flex items-center gap-3 py-2">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-orange text-sm font-semibold text-white">
+                      {getInitials(userProfile.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium text-navy">
+                      {userProfile.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {userProfile.email}
+                    </p>
+                  </div>
+                </div>
+                {isMunicipalStaff && (
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection("dashboard")}
+                    className="block w-full py-2 text-left text-sm font-medium text-navy hover:text-orange"
+                  >
+                    Dashboard
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full py-2 text-left text-sm font-medium text-destructive hover:text-destructive/80"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

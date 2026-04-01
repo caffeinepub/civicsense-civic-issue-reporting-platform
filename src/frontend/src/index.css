@@ -1,68 +1,62 @@
-/* INITIAL DESIGN DOCUMENTATION:
- * The initial theme system used HSL color values (not OKLCH) with standard shadcn/ui tokens.
- * - Color system: HSL format for all color variables
- * - Light mode: White background (0 0% 100%), dark foreground (240 10% 3.9%)
- * - Dark mode: Dark background (240 10% 3.9%), light foreground (0 0% 98%)
- * - Primary: Near-black in light mode (240 5.9% 10%), near-white in dark mode (0 0% 98%)
- * - Additional token: Success color for status indicators (green tones)
- * - No custom gradient utilities, glow effects, or special animations
- * - Standard shadcn/ui color palette without mockup-matching enhancements
- *
- * CURRENT VERSION 35 STATE:
- * This CSS file matches the initial design. Standard HSL color system with light/dark modes,
- * using only the original shadcn/ui tokens plus a success color for status badges.
- */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Navy blue primary for headers and dark text */
+    --navy: 217 45% 31%;
+    /* Bright orange/coral accent */
+    --orange: 16 100% 65%;
+    /* Soft beige/cream background */
+    --beige: 30 40% 96%;
+
+    /* Updated color system */
+    --background: 30 40% 96%;
+    --foreground: 217 45% 31%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 217 45% 31%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
+    --popover-foreground: 217 45% 31%;
+    /* Orange/coral primary color */
+    --primary: 16 100% 65%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary-foreground: 217 45% 31%;
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
     --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent-foreground: 217 45% 31%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --ring: 16 100% 65%;
     --radius: 0.5rem;
     --success: 142 76% 36%;
     --success-foreground: 0 0% 98%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 217 45% 15%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 217 45% 18%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 217 45% 15%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
+    --primary: 16 100% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 30% 25%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
+    --muted: 217 30% 25%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --accent: 217 30% 25%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 217 30% 25%;
+    --input: 217 30% 25%;
+    --ring: 16 100% 65%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 98%;
   }
@@ -70,7 +64,7 @@
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground;
   }

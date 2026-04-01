@@ -227,6 +227,7 @@ export interface backendInterface {
     getSubmissionByCategory(category: Category): Promise<Array<Submission>>;
     getSubmissionVersions(id: string): Promise<Array<string>>;
     getSubmissionsByStatus(status: Status): Promise<Array<Submission>>;
+    getSubmissionsSortedByUpvotes(): Promise<Array<Submission>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getVoteCount(submissionId: string): Promise<{
         upvotes: bigint;
@@ -611,6 +612,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getSubmissionsByStatus(to_candid_Status_n14(this._uploadFile, this._downloadFile, arg0));
+            return from_candid_vec_n22(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getSubmissionsSortedByUpvotes(): Promise<Array<Submission>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getSubmissionsSortedByUpvotes();
+                return from_candid_vec_n22(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getSubmissionsSortedByUpvotes();
             return from_candid_vec_n22(this._uploadFile, this._downloadFile, result);
         }
     }

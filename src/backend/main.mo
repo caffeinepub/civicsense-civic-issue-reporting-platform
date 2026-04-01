@@ -7,6 +7,7 @@ import Iter "mo:core/Iter";
 import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
+import Nat "mo:core/Nat";
 
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
@@ -153,6 +154,7 @@ actor {
   let comments = Map.empty<Text, Comment>();
   let votes = Map.empty<Text, Vote>();
   let statusUpdates = Map.empty<Text, [StatusUpdate]>();
+  let upvoteCounts = Map.empty<Text, Nat>(); // New upvote count cache
 
   // --- Helper Functions ---
   func isMunicipalStaff(caller : Principal) : Bool {
@@ -257,7 +259,7 @@ actor {
   };
 
   public shared ({ caller }) func setMunicipalStaffStatus(user : Principal, isStaff : Bool) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can set municipal staff status");
     };
 
@@ -354,6 +356,10 @@ actor {
     newStatus : Submission.Status,
     notes : Text,
   ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can update submission status");
+    };
+
     if (not isMunicipalStaff(caller) and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only municipal staff can update submission status");
     };
@@ -394,6 +400,10 @@ actor {
     id : Text,
     staffPrincipal : ?Principal,
   ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can assign submissions");
+    };
+
     if (not isMunicipalStaff(caller) and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only municipal staff can assign submissions");
     };
@@ -424,7 +434,7 @@ actor {
   };
 
   public shared ({ caller }) func deleteSubmission(id : Text) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can delete submissions");
     };
 
@@ -490,6 +500,10 @@ actor {
   };
 
   public shared ({ caller }) func deleteComment(commentId : Text) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can delete comments");
+    };
+
     switch (comments.get(commentId)) {
       case (null) {
         Runtime.trap("Comment not found");
@@ -522,6 +536,23 @@ actor {
           voteType;
         };
         votes.add(voteKey, vote);
+
+        // Update upvote cache count
+        switch (upvoteCounts.get(submissionId)) {
+          case (null) {
+            upvoteCounts.add(submissionId, if (voteType == #upvote) { 1 } else { 0 });
+          };
+          case (?currentCount) {
+            let newCount = if (voteType == #upvote) {
+              currentCount + 1;
+            } else if (currentCount > 0) {
+              currentCount - 1;
+            } else {
+              0;
+            };
+            upvoteCounts.add(submissionId, newCount);
+          };
+        };
       };
     };
   };
@@ -532,7 +563,22 @@ actor {
     };
 
     let voteKey = submissionId # caller.toText();
-    votes.remove(voteKey);
+    switch (votes.get(voteKey)) {
+      case (null) {};
+      case (?vote) {
+        votes.remove(voteKey);
+        // Adjust the upvote cache count if this was an upvote
+        if (vote.voteType == #upvote) {
+          switch (upvoteCounts.get(submissionId)) {
+            case (null) {};
+            case (?currentCount) {
+              let newCount = if (currentCount > 0) { currentCount - 1 } else { 0 };
+              upvoteCounts.add(submissionId, newCount);
+            };
+          };
+        };
+      };
+    };
   };
 
   // --- Query Functions ---
@@ -561,6 +607,10 @@ actor {
 
   // Municipal staff only - version history is internal
   public query ({ caller }) func getSubmissionVersions(id : Text) : async [Text] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view version history");
+    };
+
     if (not isMunicipalStaff(caller) and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only municipal staff can view version history");
     };
@@ -577,7 +627,7 @@ actor {
 
   // Public query - all users including guests can filter by category
   public query ({ caller }) func getSubmissionByCategory(category : Submission.Category) : async [Submission.Submission] {
-    submissions.values().toArray().filter(
+    submissions.values().toArray().filter<Submission.Submission>(
       func(submission) { submission.category == category }
     );
   };
@@ -588,18 +638,22 @@ actor {
       Runtime.trap("Unauthorized: Only users can view their submissions");
     };
 
-    submissions.values().toArray().filter(
+    submissions.values().toArray().filter<Submission.Submission>(
       func(submission) { submission.createdBy == caller }
     );
   };
 
   // Municipal staff only - view assigned submissions
   public query ({ caller }) func getAssignedSubmissions() : async [Submission.Submission] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view assigned submissions");
+    };
+
     if (not isMunicipalStaff(caller) and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only municipal staff can view assigned submissions");
     };
 
-    submissions.values().toArray().filter(
+    submissions.values().toArray().filter<Submission.Submission>(
       func(submission) {
         switch (submission.assignedStaff) {
           case (null) { false };
@@ -619,7 +673,7 @@ actor {
 
   // Public query - all users including guests can view comments
   public query ({ caller }) func getComments(submissionId : Text) : async [Comment] {
-    comments.values().toArray().filter(
+    comments.values().toArray().filter<Comment>(
       func(comment) { comment.submissionId == submissionId }
     );
   };
@@ -649,6 +703,10 @@ actor {
     resolvedSubmissions : Nat;
     closedSubmissions : Nat;
   } {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view analytics");
+    };
+
     if (not isMunicipalStaff(caller) and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only municipal staff can view analytics");
     };
@@ -675,5 +733,26 @@ actor {
       resolvedSubmissions = resolvedCount;
       closedSubmissions = closedCount;
     };
+  };
+
+  // Public query - get sorted submissions by upvotes using the upvote cache
+  public query ({ caller }) func getSubmissionsSortedByUpvotes() : async [Submission.Submission] {
+    let sortedIds = upvoteCounts.toArray().sort(
+      func(a, b) {
+        let (_, upvotesA) = a;
+        let (_, upvotesB) = b;
+        Nat.compare(upvotesB, upvotesA);
+      }
+    );
+
+    let sortedSubmissions = sortedIds.map(
+      func((id, _)) {
+        switch (submissions.get(id)) {
+          case (null) { Runtime.trap("Submission not found") };
+          case (?submission) { submission };
+        };
+      }
+    );
+    sortedSubmissions;
   };
 };

@@ -12,7 +12,7 @@
 // This implementation matches the initial design. Uses Lucide icons instead of generated
 // image assets, with standard theme styling and no special effects.
 
-import { Sparkles, Heart, Users } from 'lucide-react';
+import { Heart, Sparkles, Users } from "lucide-react";
 
 export default function CivicSenseAnimation() {
   return (
@@ -23,7 +23,9 @@ export default function CivicSenseAnimation() {
             Building Better Communities Together
           </h2>
           <p className="mb-12 text-lg text-muted-foreground">
-            CivicSense empowers citizens to take an active role in improving their neighborhoods through transparent reporting and community engagement.
+            CivicSense empowers citizens to take an active role in improving
+            their neighborhoods through transparent reporting and community
+            engagement.
           </p>
 
           <div className="grid gap-8 md:grid-cols-3">
@@ -33,7 +35,8 @@ export default function CivicSenseAnimation() {
               </div>
               <h3 className="text-xl font-semibold">Cleanliness</h3>
               <p className="text-center text-sm text-muted-foreground">
-                Keep our streets and public spaces clean and welcoming for everyone
+                Keep our streets and public spaces clean and welcoming for
+                everyone
               </p>
             </div>
 

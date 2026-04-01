@@ -1,14 +1,14 @@
-import { useGetAllIssues } from '../hooks/useQueries';
-import { MapPin, Loader2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Status } from '../backend';
+import { Badge } from "@/components/ui/badge";
+import { Loader2, MapPin } from "lucide-react";
+import { Status } from "../backend";
+import { useGetAllIssues } from "../hooks/useQueries";
 
 const statusColors: Record<Status, string> = {
-  [Status.open]: 'bg-blue-500',
-  [Status.inProgress]: 'bg-yellow-500',
-  [Status.resolved]: 'bg-green-500',
-  [Status.reopened]: 'bg-orange-500',
-  [Status.closed]: 'bg-gray-500',
+  [Status.open]: "bg-blue-500",
+  [Status.inProgress]: "bg-yellow-500",
+  [Status.resolved]: "bg-green-500",
+  [Status.reopened]: "bg-orange-500",
+  [Status.closed]: "bg-gray-500",
 };
 
 export default function MapSection() {
@@ -21,7 +21,9 @@ export default function MapSection() {
       <div className="container px-4">
         <div className="mb-8">
           <h2 className="text-3xl font-bold tracking-tight">Issue Map</h2>
-          <p className="text-muted-foreground">Geographic distribution of reported issues</p>
+          <p className="text-muted-foreground">
+            Geographic distribution of reported issues
+          </p>
         </div>
 
         {isLoading ? (
@@ -32,7 +34,9 @@ export default function MapSection() {
           <div className="flex h-96 items-center justify-center rounded-lg border border-dashed bg-card">
             <div className="text-center">
               <MapPin className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-muted-foreground">No issues with location data yet</p>
+              <p className="mt-4 text-muted-foreground">
+                No issues with location data yet
+              </p>
             </div>
           </div>
         ) : (
@@ -40,18 +44,28 @@ export default function MapSection() {
             <div className="rounded-lg border bg-card p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="font-semibold">Issues with Location Data</h3>
-                <Badge variant="outline">{issuesWithLocation.length} issues</Badge>
+                <Badge variant="outline">
+                  {issuesWithLocation.length} issues
+                </Badge>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {issuesWithLocation.map((issue) => (
-                  <div key={issue.id} className="rounded-lg border bg-background p-4">
+                  <div
+                    key={issue.id}
+                    className="rounded-lg border bg-background p-4"
+                  >
                     <div className="mb-2 flex items-start justify-between gap-2">
-                      <h4 className="line-clamp-1 text-sm font-medium">{issue.title}</h4>
-                      <div className={`h-3 w-3 rounded-full ${statusColors[issue.status]}`} />
+                      <h4 className="line-clamp-1 text-sm font-medium">
+                        {issue.title}
+                      </h4>
+                      <div
+                        className={`h-3 w-3 rounded-full ${statusColors[issue.status]}`}
+                      />
                     </div>
                     {issue.location && (
                       <p className="text-xs text-muted-foreground">
-                        {issue.location.latitude.toFixed(4)}, {issue.location.longitude.toFixed(4)}
+                        {issue.location.latitude.toFixed(4)},{" "}
+                        {issue.location.longitude.toFixed(4)}
                       </p>
                     )}
                     {issue.address && (

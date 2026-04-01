@@ -142,6 +142,7 @@ export interface _SERVICE {
   'getSubmissionByCategory' : ActorMethod<[Category], Array<Submission>>,
   'getSubmissionVersions' : ActorMethod<[string], Array<string>>,
   'getSubmissionsByStatus' : ActorMethod<[Status], Array<Submission>>,
+  'getSubmissionsSortedByUpvotes' : ActorMethod<[], Array<Submission>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getVoteCount' : ActorMethod<
     [string],

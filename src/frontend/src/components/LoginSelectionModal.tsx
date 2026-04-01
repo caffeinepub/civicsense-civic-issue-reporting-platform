@@ -1,161 +1,179 @@
-import { useState, useEffect } from 'react';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useLogin } from '../hooks/useQueries';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Building2, Loader2, Sparkles, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
-import { LOGIN_MODAL_EVENT } from '../utils/openLoginModal';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useLogin } from "../hooks/useQueries";
+import { LOGIN_MODAL_EVENT } from "../utils/openLoginModal";
 
-type AuthStage = 'idle' | 'ii-auth' | 'waiting-principal' | 'backend-login' | 'success';
+type AuthStage =
+  | "idle"
+  | "ii-auth"
+  | "waiting-principal"
+  | "backend-login"
+  | "success";
 
 export default function LoginSelectionModal() {
-  const { login: iiLogin, loginStatus, identity, isInitializing } = useInternetIdentity();
+  const { login: iiLogin, identity, isInitializing } = useInternetIdentity();
   const backendLogin = useLogin();
   const [showModal, setShowModal] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'public' | 'municipal' | null>(null);
-  const [authStage, setAuthStage] = useState<AuthStage>('idle');
+  const [selectedRole, setSelectedRole] = useState<
+    "public" | "municipal" | null
+  >(null);
+  const [authStage, setAuthStage] = useState<AuthStage>("idle");
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [principalCheckAttempts, setPrincipalCheckAttempts] = useState(0);
 
-  const isAuthenticated = !!identity;
-  const isIdle = authStage === 'idle';
-  const isIIAuth = authStage === 'ii-auth';
-  const isWaitingPrincipal = authStage === 'waiting-principal';
-  const isBackendLogin = authStage === 'backend-login';
-  const isSuccess = authStage === 'success';
+  const isIdle = authStage === "idle";
+  const isIIAuth = authStage === "ii-auth";
+  const isWaitingPrincipal = authStage === "waiting-principal";
+  const isBackendLogin = authStage === "backend-login";
+  const isSuccess = authStage === "success";
   const isLoggingIn = !isIdle && !isSuccess;
 
-  // Reset all state
-  const resetState = () => {
+  // Reset all state — stable via useCallback so effects can depend on it safely
+  const resetState = useCallback(() => {
     setSelectedRole(null);
-    setAuthStage('idle');
+    setAuthStage("idle");
     setError(null);
     setRetryCount(0);
-    setPrincipalCheckAttempts(0);
-  };
+  }, []);
 
-  // Step 2: Monitor for principal availability after II authentication
+  // Step 2: Monitor for principal availability after II authentication.
+  // identity is reactive state — no polling needed; effect re-runs when identity changes.
   useEffect(() => {
-    if (authStage !== 'waiting-principal' || !selectedRole) {
-      return;
-    }
+    if (authStage !== "waiting-principal" || !selectedRole) return;
 
-    // Check if identity is now available
     if (identity) {
-      console.log('✓ Principal confirmed:', identity.getPrincipal().toString());
-      setAuthStage('backend-login');
-      setPrincipalCheckAttempts(0);
+      console.log("✓ Principal confirmed:", identity.getPrincipal().toString());
+      setAuthStage("backend-login");
       return;
     }
 
-    // Implement timeout for principal check
-    const checkInterval = setInterval(() => {
-      setPrincipalCheckAttempts(prev => {
-        const newCount = prev + 1;
-        
-        // After 30 attempts (15 seconds), show error
-        if (newCount >= 30) {
-          clearInterval(checkInterval);
-          setError('Authentication timed out. Please try again.');
-          setAuthStage('idle');
-          toast.error('Authentication timed out. Please try again.');
-          return 0;
-        }
-        
-        return newCount;
-      });
-    }, 500);
+    // Timeout for the case where identity never arrives
+    const timeout = setTimeout(() => {
+      setError("Authentication timed out. Please try again.");
+      setAuthStage("idle");
+      toast.error("Authentication timed out. Please try again.");
+    }, 10000);
 
-    return () => clearInterval(checkInterval);
+    return () => clearTimeout(timeout);
   }, [authStage, identity, selectedRole]);
 
   // Step 3: Execute backend login once principal is confirmed
   useEffect(() => {
-    if (authStage !== 'backend-login' || !identity || !selectedRole) {
+    if (authStage !== "backend-login" || !identity || !selectedRole) {
       return;
     }
 
     const executeBackendLogin = async () => {
       try {
-        console.log('→ Calling backend login...');
-        const isOperator = selectedRole === 'municipal';
+        console.log("→ Calling backend login...");
+        const isOperator = selectedRole === "municipal";
         const result = await backendLogin.mutateAsync(isOperator);
 
-        if (result.__kind__ === 'success') {
-          console.log('✓ Backend login successful');
-          setAuthStage('success');
-          sessionStorage.setItem('intendedRole', selectedRole);
-          
+        if (result.__kind__ === "success") {
+          console.log("✓ Backend login successful");
+          setAuthStage("success");
+          sessionStorage.setItem("intendedRole", selectedRole);
+
           setTimeout(() => {
             setShowModal(false);
             resetState();
-            toast.success(`Welcome! Logged in as ${selectedRole === 'municipal' ? 'Municipal Operator' : 'Public User'}`);
+            toast.success(
+              `Welcome! Logged in as ${
+                selectedRole === "municipal"
+                  ? "Municipal Operator"
+                  : "Public User"
+              }`,
+            );
           }, 1000);
         } else {
-          throw new Error(result.error.message || 'Backend login failed');
+          throw new Error(result.error.message || "Backend login failed");
         }
       } catch (err: any) {
-        console.error('Backend login error:', err);
-        
+        console.error("Backend login error:", err);
+
         // Retry logic
         if (retryCount < 3) {
           console.log(`Retrying backend login (${retryCount + 1}/3)...`);
-          setRetryCount(prev => prev + 1);
+          setRetryCount((prev) => prev + 1);
           setTimeout(() => {
-            setAuthStage('backend-login');
+            setAuthStage("backend-login");
           }, 1000);
         } else {
-          setError(err.message || 'Failed to complete login. Please try again.');
-          setAuthStage('idle');
-          toast.error('Login failed. Please try again.');
+          setError(
+            err.message || "Failed to complete login. Please try again.",
+          );
+          setAuthStage("idle");
+          toast.error("Login failed. Please try again.");
         }
       }
     };
 
     executeBackendLogin();
-  }, [authStage, identity, selectedRole, backendLogin, retryCount]);
+  }, [authStage, identity, selectedRole, backendLogin, retryCount, resetState]);
 
   // Register global modal trigger with both methods
   useEffect(() => {
     const openModal = () => {
       if (!isInitializing) {
-        console.log('✓ Opening login modal');
+        console.log("✓ Opening login modal");
         setShowModal(true);
         resetState();
       } else {
-        console.log('⚠ Modal trigger called but still initializing');
-        toast.error('Please wait a moment and try again.');
+        console.log("⚠ Modal trigger called but still initializing");
+        toast.error("Please wait a moment and try again.");
       }
     };
 
     // Method 1: Direct function call
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       (window as any).openLoginModal = openModal;
-      console.log('✓ Login modal trigger registered (direct)');
+      console.log("✓ Login modal trigger registered (direct)");
     }
 
     // Method 2: Event listener (fallback)
     const handleEvent = () => {
-      console.log('✓ Login modal event received');
+      console.log("✓ Login modal event received");
       openModal();
     };
     window.addEventListener(LOGIN_MODAL_EVENT, handleEvent);
-    console.log('✓ Login modal event listener registered');
-    
+    console.log("✓ Login modal event listener registered");
+
     // Cleanup
     return () => {
-      if (typeof window !== 'undefined') {
-        delete (window as any).openLoginModal;
+      if (typeof window !== "undefined") {
+        (window as any).openLoginModal = undefined;
       }
       window.removeEventListener(LOGIN_MODAL_EVENT, handleEvent);
     };
-  }, [isInitializing]);
+  }, [isInitializing, resetState]);
 
   // Handle role selection and start authentication flow
-  const handleRoleSelect = async (role: 'public' | 'municipal') => {
+  const handleRoleSelect = async (role: "public" | "municipal") => {
     if (isLoggingIn) return;
 
     setSelectedRole(role);
@@ -164,28 +182,27 @@ export default function LoginSelectionModal() {
 
     try {
       console.log(`→ Starting ${role} login flow...`);
-      setAuthStage('ii-auth');
-      
+      setAuthStage("ii-auth");
+
       await iiLogin();
-      
-      console.log('→ II authentication initiated, waiting for principal...');
-      setAuthStage('waiting-principal');
+
+      console.log("→ II authentication initiated, waiting for principal...");
+      setAuthStage("waiting-principal");
     } catch (err: any) {
-      console.error('Internet Identity error:', err);
-      setError(err.message || 'Authentication failed. Please try again.');
-      setAuthStage('idle');
-      toast.error('Authentication failed. Please try again.');
+      console.error("Internet Identity error:", err);
+      setError(err.message || "Authentication failed. Please try again.");
+      setAuthStage("idle");
+      toast.error("Authentication failed. Please try again.");
     }
   };
 
   const handleOpenChange = (open: boolean) => {
-    console.log('Dialog onOpenChange called with:', open);
+    console.log("Dialog onOpenChange called with:", open);
     // Only allow closing if not currently logging in
     if (!open && !isLoggingIn) {
       setShowModal(false);
       resetState();
     } else if (open) {
-      // Allow opening
       setShowModal(true);
     }
   };
@@ -201,15 +218,15 @@ export default function LoginSelectionModal() {
 
   return (
     <Dialog open={showModal} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] transition-all duration-300 animate-in fade-in zoom-in-95">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold">
-            {isLoggingIn ? 'Logging In...' : 'Choose Your Role'}
+            {isLoggingIn ? "Logging In..." : "Choose Your Role"}
           </DialogTitle>
           <DialogDescription className="text-center">
-            {isLoggingIn 
-              ? 'Please wait while we authenticate your account'
-              : 'Select how you want to use CivicSense'}
+            {isLoggingIn
+              ? "Please wait while we authenticate your account"
+              : "Select how you want to use CivicSense"}
           </DialogDescription>
         </DialogHeader>
 
@@ -217,7 +234,7 @@ export default function LoginSelectionModal() {
         {isLoggingIn && (
           <div className="space-y-3 py-4">
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div 
+              <div
                 className="h-full bg-primary transition-all duration-500 ease-out"
                 style={{ width: `${getProgressPercentage()}%` }}
               />
@@ -238,7 +255,10 @@ export default function LoginSelectionModal() {
               {isBackendLogin && (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Completing login{retryCount > 0 ? ` (retry ${retryCount}/3)` : ''}...</span>
+                  <span>
+                    Completing login
+                    {retryCount > 0 ? ` (retry ${retryCount}/3)` : ""}...
+                  </span>
                 </>
               )}
               {isSuccess && (
@@ -263,9 +283,9 @@ export default function LoginSelectionModal() {
         {!isLoggingIn && (
           <div className="grid gap-4 py-4">
             {/* Public User Card */}
-            <Card 
+            <Card
               className="group cursor-pointer border-2 transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-lg active:scale-[0.98]"
-              onClick={() => handleRoleSelect('public')}
+              onClick={() => handleRoleSelect("public")}
             >
               <CardHeader>
                 <div className="mb-3 flex items-center justify-center">
@@ -297,9 +317,9 @@ export default function LoginSelectionModal() {
             </Card>
 
             {/* Municipal Operator Card */}
-            <Card 
+            <Card
               className="group cursor-pointer border-2 transition-all duration-300 hover:-translate-y-1 hover:border-accent hover:shadow-lg active:scale-[0.98]"
-              onClick={() => handleRoleSelect('municipal')}
+              onClick={() => handleRoleSelect("municipal")}
             >
               <CardHeader>
                 <div className="mb-3 flex items-center justify-center">
@@ -307,7 +327,9 @@ export default function LoginSelectionModal() {
                     <Building2 className="h-8 w-8 text-accent-foreground" />
                   </div>
                 </div>
-                <CardTitle className="text-center">Municipal Operator</CardTitle>
+                <CardTitle className="text-center">
+                  Municipal Operator
+                </CardTitle>
                 <CardDescription className="text-center">
                   Manage and resolve civic issues efficiently
                 </CardDescription>

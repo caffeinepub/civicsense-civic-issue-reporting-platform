@@ -134,6 +134,7 @@ export interface backendInterface {
     getSubmissionByCategory(category: Category): Promise<Array<Submission>>;
     getSubmissionVersions(id: string): Promise<Array<string>>;
     getSubmissionsByStatus(status: Status): Promise<Array<Submission>>;
+    getSubmissionsSortedByUpvotes(): Promise<Array<Submission>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getVoteCount(submissionId: string): Promise<{
         upvotes: bigint;

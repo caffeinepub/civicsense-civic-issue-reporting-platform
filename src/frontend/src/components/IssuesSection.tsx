@@ -1,23 +1,35 @@
-import { useState } from 'react';
-import { useGetAllIssues, useGetMyIssues } from '../hooks/useQueries';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Loader2 } from 'lucide-react';
-import IssueCard from './IssueCard';
-import ReportIssueDialog from './ReportIssueDialog';
-import IssueDetailDialog from './IssueDetailDialog';
-import type { Submission } from '../backend';
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Plus } from "lucide-react";
+import { useState } from "react";
+import type { Submission } from "../backend";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  useGetAllIssues,
+  useGetCallerUserProfile,
+  useGetMyIssues,
+  useIsCallerAdmin,
+} from "../hooks/useQueries";
+import IssueCard from "./IssueCard";
+import IssueDetailDialog from "./IssueDetailDialog";
+import ReportIssueDialog from "./ReportIssueDialog";
 
 export default function IssuesSection() {
   const { data: allIssues = [], isLoading: allLoading } = useGetAllIssues();
   const { data: myIssues = [], isLoading: myLoading } = useGetMyIssues();
   const { identity, loginStatus } = useInternetIdentity();
+  const { data: userProfile } = useGetCallerUserProfile();
+  const { data: isAdmin } = useIsCallerAdmin();
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<Submission | null>(null);
 
   const isAuthenticated = !!identity;
-  const isAuthenticating = loginStatus === 'logging-in' || loginStatus === 'initializing';
+  const isAuthenticating =
+    loginStatus === "logging-in" || loginStatus === "initializing";
+  const isMunicipalStaff = userProfile?.isMunicipalStaff || isAdmin;
+
+  // Municipal staff should not see the Report Issue button
+  const showReportButton = !isMunicipalStaff;
 
   return (
     <section id="issues" className="border-b bg-background py-12">
@@ -25,24 +37,29 @@ export default function IssuesSection() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Civic Issues</h2>
-            <p className="text-muted-foreground">Browse and report issues in your community</p>
+            <p className="text-muted-foreground">
+              Browse and report issues in your community
+            </p>
           </div>
-          <Button 
-            onClick={() => setReportDialogOpen(true)} 
-            disabled={!isAuthenticated || isAuthenticating}
-          >
-            {isAuthenticating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Authenticating...
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Report Issue
-              </>
-            )}
-          </Button>
+          {showReportButton && (
+            <Button
+              onClick={() => setReportDialogOpen(true)}
+              disabled={!isAuthenticated || isAuthenticating}
+              className="transition-all duration-300 hover:scale-105"
+            >
+              {isAuthenticating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Authenticating...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Report Issue
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         <Tabs defaultValue="all" className="w-full">
@@ -50,9 +67,7 @@ export default function IssuesSection() {
             <TabsTrigger value="all">
               All Issues ({allIssues.length})
             </TabsTrigger>
-            <TabsTrigger value="my">
-              My Reports ({myIssues.length})
-            </TabsTrigger>
+            <TabsTrigger value="my">My Reports ({myIssues.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
@@ -62,12 +77,27 @@ export default function IssuesSection() {
               </div>
             ) : allIssues.length === 0 ? (
               <div className="rounded-lg border border-dashed py-12 text-center">
-                <p className="text-muted-foreground">No issues reported yet. Be the first to report one!</p>
+                <p className="text-muted-foreground">
+                  No issues reported yet. Be the first to report one!
+                </p>
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {allIssues.map((issue) => (
-                  <IssueCard key={issue.id} issue={issue} onClick={() => setSelectedIssue(issue)} />
+                {allIssues.map((issue, index) => (
+                  <div
+                    key={issue.id}
+                    className="animate-in fade-in"
+                    style={{
+                      animationDelay: `${index * 50}ms`,
+                      animationDuration: "500ms",
+                      animationFillMode: "backwards",
+                    }}
+                  >
+                    <IssueCard
+                      issue={issue}
+                      onClick={() => setSelectedIssue(issue)}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -80,20 +110,37 @@ export default function IssuesSection() {
               </div>
             ) : myIssues.length === 0 ? (
               <div className="rounded-lg border border-dashed py-12 text-center">
-                <p className="text-muted-foreground">You haven't reported any issues yet.</p>
-                <Button
-                  onClick={() => setReportDialogOpen(true)}
-                  variant="outline"
-                  className="mt-4"
-                  disabled={!isAuthenticated || isAuthenticating}
-                >
-                  Report Your First Issue
-                </Button>
+                <p className="text-muted-foreground">
+                  You haven't reported any issues yet.
+                </p>
+                {showReportButton && (
+                  <Button
+                    onClick={() => setReportDialogOpen(true)}
+                    variant="outline"
+                    className="mt-4"
+                    disabled={!isAuthenticated || isAuthenticating}
+                  >
+                    Report Your First Issue
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {myIssues.map((issue) => (
-                  <IssueCard key={issue.id} issue={issue} onClick={() => setSelectedIssue(issue)} />
+                {myIssues.map((issue, index) => (
+                  <div
+                    key={issue.id}
+                    className="animate-in fade-in"
+                    style={{
+                      animationDelay: `${index * 50}ms`,
+                      animationDuration: "500ms",
+                      animationFillMode: "backwards",
+                    }}
+                  >
+                    <IssueCard
+                      issue={issue}
+                      onClick={() => setSelectedIssue(issue)}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -101,8 +148,19 @@ export default function IssuesSection() {
         </Tabs>
       </div>
 
-      <ReportIssueDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
-      {selectedIssue && <IssueDetailDialog issue={selectedIssue} open={!!selectedIssue} onOpenChange={(open) => !open && setSelectedIssue(null)} />}
+      {showReportButton && (
+        <ReportIssueDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+        />
+      )}
+      {selectedIssue && (
+        <IssueDetailDialog
+          issue={selectedIssue}
+          open={!!selectedIssue}
+          onOpenChange={(open) => !open && setSelectedIssue(null)}
+        />
+      )}
     </section>
   );
 }

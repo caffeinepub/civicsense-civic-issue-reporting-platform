@@ -1,16 +1,25 @@
-import { useState, useEffect } from 'react';
-import { useSaveCallerUserProfile, useGetCallerUserProfile } from '../hooks/useQueries';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Building2, Users } from 'lucide-react';
-import type { UserProfile } from '../backend';
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Building2, Loader2, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { UserProfile } from "../backend";
+import {
+  useGetCallerUserProfile,
+  useSaveCallerUserProfile,
+} from "../hooks/useQueries";
 
 export default function ProfileSetupModal() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const saveProfile = useSaveCallerUserProfile();
   const { data: existingProfile } = useGetCallerUserProfile();
 
@@ -18,11 +27,11 @@ export default function ProfileSetupModal() {
   const [isMunicipalStaff, setIsMunicipalStaff] = useState(false);
 
   useEffect(() => {
-    const intendedRole = sessionStorage.getItem('intendedRole');
-    if (intendedRole === 'municipal') {
+    const intendedRole = sessionStorage.getItem("intendedRole");
+    if (intendedRole === "municipal") {
       setIsMunicipalStaff(true);
     }
-    
+
     // Pre-fill with existing profile data if available
     if (existingProfile) {
       setIsMunicipalStaff(existingProfile.isMunicipalStaff);
@@ -31,7 +40,7 @@ export default function ProfileSetupModal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim() || !email.trim()) {
       return;
     }
@@ -44,16 +53,19 @@ export default function ProfileSetupModal() {
     };
 
     await saveProfile.mutateAsync(profile);
-    
+
     // Clear the intended role after profile setup
-    sessionStorage.removeItem('intendedRole');
+    sessionStorage.removeItem("intendedRole");
 
     // Scroll to appropriate section based on role
     if (isMunicipalStaff) {
       setTimeout(() => {
-        const dashboardSection = document.getElementById('dashboard');
+        const dashboardSection = document.getElementById("dashboard");
         if (dashboardSection) {
-          dashboardSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          dashboardSection.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
         }
       }, 500);
     }
@@ -61,7 +73,10 @@ export default function ProfileSetupModal() {
 
   return (
     <Dialog open={true}>
-      <DialogContent className="sm:max-w-md modal-centered" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent
+        className="sm:max-w-md modal-centered"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <div className="flex items-center justify-center mb-2">
             {isMunicipalStaff ? (
@@ -74,12 +89,13 @@ export default function ProfileSetupModal() {
               </div>
             )}
           </div>
-          <DialogTitle className="text-center">Complete Your Profile</DialogTitle>
+          <DialogTitle className="text-center">
+            Complete Your Profile
+          </DialogTitle>
           <DialogDescription className="text-center">
-            {isMunicipalStaff 
-              ? 'Set up your municipal operator profile to access the dashboard'
-              : 'Please provide your information to get started with CivicSense'
-            }
+            {isMunicipalStaff
+              ? "Set up your municipal operator profile to access the dashboard"
+              : "Please provide your information to get started with CivicSense"}
           </DialogDescription>
         </DialogHeader>
 
@@ -133,21 +149,24 @@ export default function ProfileSetupModal() {
               <div className="flex items-start gap-3">
                 <Building2 className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-orange-900 dark:text-orange-100">Municipal Operator Access</p>
+                  <p className="font-semibold text-orange-900 dark:text-orange-100">
+                    Municipal Operator Access
+                  </p>
                   <p className="text-xs mt-1 text-orange-800 dark:text-orange-200">
-                    Your account is configured with municipal staff permissions. You'll have access to the dashboard and analytics.
+                    Your account is configured with municipal staff permissions.
+                    You'll have access to the dashboard and analytics.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className={`w-full transition-all duration-300 ${
-              isMunicipalStaff 
-                ? 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800' 
-                : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+              isMunicipalStaff
+                ? "bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800"
+                : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
             }`}
             disabled={saveProfile.isPending || !name.trim() || !email.trim()}
           >
@@ -157,7 +176,7 @@ export default function ProfileSetupModal() {
                 Saving...
               </>
             ) : (
-              'Complete Setup'
+              "Complete Setup"
             )}
           </Button>
         </form>
