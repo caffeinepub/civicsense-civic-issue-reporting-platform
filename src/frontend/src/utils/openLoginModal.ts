@@ -1,37 +1,32 @@
 import { toast } from "sonner";
 
-const LOGIN_MODAL_EVENT = "open-login-modal";
+export const LOGIN_MODAL_EVENT = "open-login-modal";
 
 /**
  * Shared utility to reliably open the global login selection modal.
- * Uses both direct function call and custom event as fallback.
+ * Optionally pre-select a role: 'public' | 'municipal'
  */
-export function openLoginModal(): void {
+export function openLoginModal(role?: "public" | "municipal"): void {
   const attemptOpen = (retries = 0): void => {
-    // Try direct function call first
     if (typeof window !== "undefined" && (window as any).openLoginModal) {
       try {
-        console.log("→ Calling openLoginModal trigger (direct)");
-        (window as any).openLoginModal();
+        (window as any).openLoginModal(role);
         return;
       } catch (error) {
         console.error("Error opening login modal:", error);
       }
     }
 
-    // Fallback: dispatch custom event
     if (typeof window !== "undefined") {
-      console.log("→ Dispatching login modal event (fallback)");
-      window.dispatchEvent(new CustomEvent(LOGIN_MODAL_EVENT));
+      window.dispatchEvent(
+        new CustomEvent(LOGIN_MODAL_EVENT, { detail: { role } }),
+      );
       return;
     }
 
-    // Retry logic if neither method worked
     if (retries < 5) {
-      console.log(`Login modal not ready, retrying... (${retries + 1}/5)`);
       setTimeout(() => attemptOpen(retries + 1), 150);
     } else {
-      console.error("Login modal not available after retries");
       toast.error(
         "Login is temporarily unavailable. Please refresh the page and try again.",
       );
@@ -40,5 +35,3 @@ export function openLoginModal(): void {
 
   attemptOpen();
 }
-
-export { LOGIN_MODAL_EVENT };

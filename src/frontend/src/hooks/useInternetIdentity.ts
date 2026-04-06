@@ -14,7 +14,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { loadConfig } from "../config";
@@ -150,11 +149,9 @@ export function InternetIdentityProvider({
    */
   createOptions?: AuthClientCreateOptions;
 }>) {
-  // Ref tracks the auth client to avoid stale closures and prevent double-initialization.
-  // We still expose a state setter (setAuthClient) for the `clear` flow, but we
-  // DON'T read the state value in the init effect — only the ref.
-  const authClientRef = useRef<AuthClient | undefined>(undefined);
-  const setAuthClient = useState<AuthClient | undefined>(undefined)[1];
+  const [authClient, setAuthClient] = useState<AuthClient | undefined>(
+    undefined,
+  );
   const [identity, setIdentity] = useState<Identity | undefined>(undefined);
   const [loginStatus, setStatus] = useState<Status>("initializing");
   const [loginError, setError] = useState<Error | undefined>(undefined);
@@ -165,14 +162,14 @@ export function InternetIdentityProvider({
   }, []);
 
   const handleLoginSuccess = useCallback(() => {
-    const latestIdentity = authClientRef.current?.getIdentity();
+    const latestIdentity = authClient?.getIdentity();
     if (!latestIdentity) {
       setErrorMessage("Identity not found after successful login");
       return;
     }
     setIdentity(latestIdentity);
     setStatus("success");
-  }, [setErrorMessage]);
+  }, [authClient, setErrorMessage]);
 
   const handleLoginError = useCallback(
     (maybeError?: string) => {
@@ -182,15 +179,14 @@ export function InternetIdentityProvider({
   );
 
   const login = useCallback(() => {
-    const client = authClientRef.current;
-    if (!client) {
+    if (!authClient) {
       setErrorMessage(
         "AuthClient is not initialized yet, make sure to call `login` on user interaction e.g. click.",
       );
       return;
     }
 
-    const currentIdentity = client.getIdentity();
+    const currentIdentity = authClient.getIdentity();
     if (
       !currentIdentity.getPrincipal().isAnonymous() &&
       currentIdentity instanceof DelegationIdentity &&
@@ -208,20 +204,18 @@ export function InternetIdentityProvider({
     };
 
     setStatus("logging-in");
-    void client.login(options);
-  }, [handleLoginError, handleLoginSuccess, setErrorMessage]);
+    void authClient.login(options);
+  }, [authClient, handleLoginError, handleLoginSuccess, setErrorMessage]);
 
   const clear = useCallback(() => {
-    const client = authClientRef.current;
-    if (!client) {
+    if (!authClient) {
       setErrorMessage("Auth client not initialized");
       return;
     }
 
-    void client
+    void authClient
       .logout()
       .then(() => {
-        authClientRef.current = undefined;
         setIdentity(undefined);
         setAuthClient(undefined);
         setStatus("idle");
@@ -235,20 +229,17 @@ export function InternetIdentityProvider({
             : new Error("Logout failed"),
         );
       });
-  }, [setAuthClient, setErrorMessage]);
+  }, [authClient, setErrorMessage]);
 
-  // Run only once on mount (createOptions is stable). Using authClientRef instead of
-  // authClient state in the dependency array prevents double-initialization lag.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         setStatus("initializing");
-        let existingClient = authClientRef.current;
+        let existingClient = authClient;
         if (!existingClient) {
           existingClient = await createAuthClient(createOptions);
           if (cancelled) return;
-          authClientRef.current = existingClient;
           setAuthClient(existingClient);
         }
         const isAuthenticated = await existingClient.isAuthenticated();
@@ -271,7 +262,7 @@ export function InternetIdentityProvider({
     return () => {
       cancelled = true;
     };
-  }, [createOptions, setAuthClient]); // ref handles stale closure; removed authClient state dep
+  }, [createOptions, authClient]);
 
   const value = useMemo<ProviderValue>(
     () => ({

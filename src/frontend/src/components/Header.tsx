@@ -8,7 +8,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Hexagon,
   LayoutDashboard,
@@ -18,24 +17,20 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useGetCallerUserProfile, useIsCallerAdmin } from "../hooks/useQueries";
+import { clearDemoSession, getDemoSession } from "../utils/demoSession";
 import { openLoginModal } from "../utils/openLoginModal";
 
 export default function Header() {
-  const { clear, loginStatus, identity } = useInternetIdentity();
-  const { data: userProfile } = useGetCallerUserProfile();
-  const { data: isAdmin } = useIsCallerAdmin();
-  const queryClient = useQueryClient();
+  const [session] = useState(getDemoSession());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === "logging-in";
+  const isAuthenticated = !!session;
+  const isMunicipalStaff = session?.role === "municipal";
+  const userProfile = session ? { name: session.name } : null;
 
-  const handleLogout = async () => {
-    await clear();
-    queryClient.clear();
-    sessionStorage.removeItem("intendedRole");
+  const handleLogout = () => {
+    clearDemoSession();
+    window.location.reload();
   };
 
   const getInitials = (name: string) => {
@@ -47,26 +42,12 @@ export default function Header() {
       .slice(0, 2);
   };
 
-  const isMunicipalStaff = userProfile?.isMunicipalStaff || isAdmin;
-
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     setMobileMenuOpen(false);
-  };
-
-  const handleLoginClick = () => {
-    openLoginModal();
-  };
-
-  const handleSignUpClick = () => {
-    openLoginModal();
-  };
-
-  const handleAuthorityPortalClick = () => {
-    openLoginModal();
   };
 
   return (
@@ -126,6 +107,7 @@ export default function Header() {
                   size="sm"
                   onClick={() => scrollToSection("dashboard")}
                   className="text-navy hover:bg-orange/10 hover:text-orange"
+                  data-ocid="header.link"
                 >
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Dashboard
@@ -136,6 +118,7 @@ export default function Header() {
                   <Button
                     variant="ghost"
                     className="relative h-9 w-9 rounded-full"
+                    data-ocid="header.toggle"
                   >
                     <Avatar className="h-9 w-9">
                       <AvatarFallback className="bg-orange text-sm font-semibold text-white">
@@ -149,7 +132,7 @@ export default function Header() {
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">{userProfile.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {userProfile.email}
+                        {isMunicipalStaff ? "Municipal Staff" : "Public User"}
                       </p>
                     </div>
                   </DropdownMenuLabel>
@@ -157,12 +140,13 @@ export default function Header() {
                   {isMunicipalStaff && (
                     <DropdownMenuItem disabled className="cursor-default">
                       <Shield className="mr-2 h-4 w-4 text-orange" />
-                      <span>{isAdmin ? "Admin" : "Municipal Staff"}</span>
+                      <span>Municipal Staff</span>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
                     onClick={handleLogout}
                     className="cursor-pointer text-destructive focus:text-destructive"
+                    data-ocid="header.delete_button"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Logout</span>
@@ -172,33 +156,33 @@ export default function Header() {
             </>
           ) : (
             <>
-              {/* Login text link */}
+              {/* Login - opens public user login */}
               <button
                 type="button"
-                onClick={handleLoginClick}
-                disabled={isLoggingIn}
-                className="text-sm font-medium text-navy transition-colors hover:text-orange disabled:opacity-50"
+                onClick={() => openLoginModal("public")}
+                className="text-sm font-medium text-navy transition-colors hover:text-orange"
+                data-ocid="header.link"
               >
-                {isLoggingIn ? "Logging in..." : "Login"}
+                Login
               </button>
 
-              {/* Sign Up outlined button */}
+              {/* Sign Up - opens public user login */}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleSignUpClick}
-                disabled={isLoggingIn}
+                onClick={() => openLoginModal("public")}
                 className="border-navy text-navy hover:bg-navy hover:text-white"
+                data-ocid="header.secondary_button"
               >
                 Sign Up
               </Button>
 
-              {/* Authority Portal orange button */}
+              {/* Authority Portal - opens municipal login directly */}
               <Button
                 size="sm"
-                onClick={handleAuthorityPortalClick}
-                disabled={isLoggingIn}
+                onClick={() => openLoginModal("municipal")}
                 className="bg-orange text-white hover:bg-orange/90"
+                data-ocid="header.primary_button"
               >
                 Authority Portal
               </Button>
@@ -212,6 +196,7 @@ export default function Header() {
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="text-navy md:hidden"
           aria-label="Toggle menu"
+          data-ocid="header.toggle"
         >
           {mobileMenuOpen ? (
             <X className="h-6 w-6" />
@@ -263,31 +248,31 @@ export default function Header() {
                     variant="ghost"
                     className="w-full justify-start text-navy hover:text-orange"
                     onClick={() => {
-                      handleLoginClick();
+                      openLoginModal("public");
                       setMobileMenuOpen(false);
                     }}
-                    disabled={isLoggingIn}
+                    data-ocid="header.link"
                   >
-                    {isLoggingIn ? "Logging in..." : "Login"}
+                    Login
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full border-navy text-navy hover:bg-navy hover:text-white"
                     onClick={() => {
-                      handleSignUpClick();
+                      openLoginModal("public");
                       setMobileMenuOpen(false);
                     }}
-                    disabled={isLoggingIn}
+                    data-ocid="header.secondary_button"
                   >
                     Sign Up
                   </Button>
                   <Button
                     className="w-full bg-orange text-white hover:bg-orange/90"
                     onClick={() => {
-                      handleAuthorityPortalClick();
+                      openLoginModal("municipal");
                       setMobileMenuOpen(false);
                     }}
-                    disabled={isLoggingIn}
+                    data-ocid="header.primary_button"
                   >
                     Authority Portal
                   </Button>
@@ -307,7 +292,7 @@ export default function Header() {
                       {userProfile.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {userProfile.email}
+                      {isMunicipalStaff ? "Municipal Staff" : "Public User"}
                     </p>
                   </div>
                 </div>
@@ -327,6 +312,7 @@ export default function Header() {
                     setMobileMenuOpen(false);
                   }}
                   className="block w-full py-2 text-left text-sm font-medium text-destructive hover:text-destructive/80"
+                  data-ocid="header.delete_button"
                 >
                   Logout
                 </button>

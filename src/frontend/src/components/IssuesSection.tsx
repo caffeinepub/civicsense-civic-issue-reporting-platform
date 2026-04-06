@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Plus } from "lucide-react";
@@ -28,7 +29,6 @@ export default function IssuesSection() {
     loginStatus === "logging-in" || loginStatus === "initializing";
   const isMunicipalStaff = userProfile?.isMunicipalStaff || isAdmin;
 
-  // Municipal staff should not see the Report Issue button
   const showReportButton = !isMunicipalStaff;
 
   return (
@@ -64,10 +64,24 @@ export default function IssuesSection() {
 
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="mb-6">
-            <TabsTrigger value="all">
-              All Issues ({allIssues.length})
+            <TabsTrigger value="all" className="flex items-center gap-2">
+              All Issues
+              <Badge
+                variant="secondary"
+                className="ml-1 min-w-[24px] font-bold text-foreground bg-primary/15"
+              >
+                {allLoading ? "..." : allIssues.length}
+              </Badge>
             </TabsTrigger>
-            <TabsTrigger value="my">My Reports ({myIssues.length})</TabsTrigger>
+            <TabsTrigger value="my" className="flex items-center gap-2">
+              My Reports
+              <Badge
+                variant="secondary"
+                className="ml-1 min-w-[24px] font-bold text-foreground bg-primary/15"
+              >
+                {myLoading ? "..." : myIssues.length}
+              </Badge>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
