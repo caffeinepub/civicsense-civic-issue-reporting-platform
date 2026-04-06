@@ -4,13 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import type { Submission } from "../backend";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import {
-  useGetAllIssues,
-  useGetCallerUserProfile,
-  useGetMyIssues,
-  useIsCallerAdmin,
-} from "../hooks/useQueries";
+import { useGetAllIssues, useGetMyIssues } from "../hooks/useQueries";
+import { getDemoSession } from "../utils/demoSession";
 import IssueCard from "./IssueCard";
 import IssueDetailDialog from "./IssueDetailDialog";
 import ReportIssueDialog from "./ReportIssueDialog";
@@ -18,18 +13,14 @@ import ReportIssueDialog from "./ReportIssueDialog";
 export default function IssuesSection() {
   const { data: allIssues = [], isLoading: allLoading } = useGetAllIssues();
   const { data: myIssues = [], isLoading: myLoading } = useGetMyIssues();
-  const { identity, loginStatus } = useInternetIdentity();
-  const { data: userProfile } = useGetCallerUserProfile();
-  const { data: isAdmin } = useIsCallerAdmin();
+  const session = getDemoSession();
+  const isMunicipalStaff = session?.role === "municipal";
+  const isAuthenticated = !!session;
+
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<Submission | null>(null);
 
-  const isAuthenticated = !!identity;
-  const isAuthenticating =
-    loginStatus === "logging-in" || loginStatus === "initializing";
-  const isMunicipalStaff = userProfile?.isMunicipalStaff || isAdmin;
-
-  const showReportButton = !isMunicipalStaff;
+  const showReportButton = isAuthenticated && !isMunicipalStaff;
 
   return (
     <section id="issues" className="border-b bg-background py-12">
@@ -44,20 +35,10 @@ export default function IssuesSection() {
           {showReportButton && (
             <Button
               onClick={() => setReportDialogOpen(true)}
-              disabled={!isAuthenticated || isAuthenticating}
               className="transition-all duration-300 hover:scale-105"
             >
-              {isAuthenticating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Authenticating...
-                </>
-              ) : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Report Issue
-                </>
-              )}
+              <Plus className="mr-2 h-4 w-4" />
+              Report Issue
             </Button>
           )}
         </div>
@@ -132,7 +113,6 @@ export default function IssuesSection() {
                     onClick={() => setReportDialogOpen(true)}
                     variant="outline"
                     className="mt-4"
-                    disabled={!isAuthenticated || isAuthenticating}
                   >
                     Report Your First Issue
                   </Button>

@@ -8,25 +8,32 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, CheckCircle2, Users, Zap } from "lucide-react";
+import { Building2, CheckCircle2, Eye, EyeOff, Users, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { setDemoSession } from "../utils/demoSession";
 import { LOGIN_MODAL_EVENT } from "../utils/openLoginModal";
 
 type DemoRole = "public" | "municipal";
 
+// Password for municipal staff access
+const MUNICIPAL_PASSWORD = "civic@2024";
+
 export default function LoginSelectionModal() {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState("");
   const [selectedRole, setSelectedRole] = useState<DemoRole>("public");
   const [nameError, setNameError] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Register global modal trigger - state setters are stable references
   useEffect(() => {
     const openModal = (role?: DemoRole) => {
-      // Inline reset
       setName("");
       setNameError("");
+      setPassword("");
+      setPasswordError("");
+      setShowPassword(false);
       setSelectedRole(role ?? "public");
       setShowModal(true);
     };
@@ -56,12 +63,23 @@ export default function LoginSelectionModal() {
       setNameError("Please enter your name to continue.");
       return;
     }
+    if (selectedRole === "municipal") {
+      if (!password) {
+        setPasswordError("Password is required for Municipal Staff.");
+        return;
+      }
+      if (password !== MUNICIPAL_PASSWORD) {
+        setPasswordError("Incorrect password. Please try again.");
+        return;
+      }
+    }
     setDemoSession({ name: trimmed, role: selectedRole });
     setShowModal(false);
     setName("");
     setNameError("");
+    setPassword("");
+    setPasswordError("");
     setSelectedRole("public");
-    // Reload so all components pick up the new session
     window.location.reload();
   };
 
@@ -70,8 +88,16 @@ export default function LoginSelectionModal() {
       setShowModal(false);
       setName("");
       setNameError("");
+      setPassword("");
+      setPasswordError("");
       setSelectedRole("public");
     }
+  };
+
+  const handleRoleChange = (role: DemoRole) => {
+    setSelectedRole(role);
+    setPassword("");
+    setPasswordError("");
   };
 
   return (
@@ -126,7 +152,7 @@ export default function LoginSelectionModal() {
               <button
                 type="button"
                 data-ocid="login.tab"
-                onClick={() => setSelectedRole("public")}
+                onClick={() => handleRoleChange("public")}
                 className={[
                   "flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition-all duration-200",
                   selectedRole === "public"
@@ -157,7 +183,7 @@ export default function LoginSelectionModal() {
               <button
                 type="button"
                 data-ocid="login.tab"
-                onClick={() => setSelectedRole("municipal")}
+                onClick={() => handleRoleChange("municipal")}
                 className={[
                   "flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition-all duration-200",
                   selectedRole === "municipal"
@@ -186,6 +212,46 @@ export default function LoginSelectionModal() {
             </div>
           </div>
 
+          {/* Password field — only shown for Municipal Staff */}
+          {selectedRole === "municipal" && (
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="municipal-password"
+                className="text-sm font-medium"
+              >
+                Staff Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="municipal-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter staff password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (passwordError) setPasswordError("");
+                  }}
+                  className="h-11 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {passwordError && (
+                <p className="text-xs text-destructive">{passwordError}</p>
+              )}
+            </div>
+          )}
+
           {/* Submit */}
           <Button
             type="submit"
@@ -193,7 +259,9 @@ export default function LoginSelectionModal() {
             className="w-full h-11 gap-2 text-base font-semibold"
           >
             <Zap className="h-4 w-4" />
-            Login Instantly
+            {selectedRole === "municipal"
+              ? "Login as Staff"
+              : "Login Instantly"}
           </Button>
         </form>
       </DialogContent>

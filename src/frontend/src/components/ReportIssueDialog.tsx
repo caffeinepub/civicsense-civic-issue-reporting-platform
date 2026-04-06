@@ -21,8 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MapPin, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Category, ExternalBlob, Priority, Status } from "../backend";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useCreateIssue, useUploadAttachments } from "../hooks/useQueries";
+import { getDemoSession } from "../utils/demoSession";
 
 interface ReportIssueDialogProps {
   open: boolean;
@@ -48,7 +48,7 @@ export default function ReportIssueDialog({
   open,
   onOpenChange,
 }: ReportIssueDialogProps) {
-  const { identity } = useInternetIdentity();
+  const session = getDemoSession();
   const createIssue = useCreateIssue();
   const uploadAttachments = useUploadAttachments();
 
@@ -89,7 +89,6 @@ export default function ReportIssueDialog({
         setLongitude(lng.toFixed(6));
         setLocationLoading(false);
 
-        // Attempt reverse geocoding via browser-side fetch (no backend needed)
         try {
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
@@ -157,8 +156,8 @@ export default function ReportIssueDialog({
     e.preventDefault();
     setError(null);
 
-    if (!identity) {
-      setError("You must be logged in to report an issue");
+    if (!session) {
+      setError("You must be logged in to report an issue.");
       return;
     }
 
@@ -200,6 +199,10 @@ export default function ReportIssueDialog({
       const address =
         street || city || zipCode ? { street, city, zipCode } : undefined;
 
+      // Use a demo principal derived from session name
+      const { Principal } = await import("@dfinity/principal");
+      const creatorPrincipal = Principal.anonymous();
+
       await createIssue.mutateAsync({
         id: submissionId,
         title: title.trim(),
@@ -209,7 +212,7 @@ export default function ReportIssueDialog({
         status: Status.open,
         location,
         address,
-        createdBy: identity.getPrincipal(),
+        createdBy: creatorPrincipal,
         createdAt: BigInt(Date.now() * 1000000),
         updatedAt: BigInt(Date.now() * 1000000),
         attachments: [],
@@ -343,7 +346,7 @@ export default function ReportIssueDialog({
           {/* Location Section */}
           <div className="space-y-3 rounded-lg border p-3">
             <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-orange" />
+              <MapPin className="h-4 w-4 text-orange-500" />
               <Label className="text-sm font-semibold">Location</Label>
               {locationLoading && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
