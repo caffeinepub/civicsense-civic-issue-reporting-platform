@@ -18,11 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, MapPin, X } from "lucide-react";
+import { ImagePlus, Loader2, MapPin, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Category, ExternalBlob, Priority, Status } from "../backend";
-import { useCreateIssue, useUploadAttachments } from "../hooks/useQueries";
+import { useCreateIssue } from "../hooks/useQueries";
+import { Category, Priority, Status } from "../types/domain";
 import { getDemoSession } from "../utils/demoSession";
+import { DEMO_PRINCIPAL } from "../utils/localStore";
 
 interface ReportIssueDialogProps {
   open: boolean;
@@ -33,7 +34,6 @@ interface ImagePreview {
   id: string;
   file: File;
   preview: string;
-  blob?: ExternalBlob;
   uploadProgress: number;
 }
 
@@ -50,7 +50,6 @@ export default function ReportIssueDialog({
 }: ReportIssueDialogProps) {
   const session = getDemoSession();
   const createIssue = useCreateIssue();
-  const uploadAttachments = useUploadAttachments();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -65,7 +64,7 @@ export default function ReportIssueDialog({
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
-  const isSubmitting = createIssue.isPending || uploadAttachments.isPending;
+  const isSubmitting = createIssue.isPending;
 
   // Auto-fetch location when dialog opens
   useEffect(() => {
@@ -140,6 +139,10 @@ export default function ReportIssueDialog({
       uploadProgress: 0,
     }));
     setImages((prev) => [...prev, ...newImages]);
+    // Clear image error when user adds images
+    if (error === "Please upload at least one image of the issue") {
+      setError(null);
+    }
   };
 
   const removeImage = (id: string) => {
@@ -166,26 +169,13 @@ export default function ReportIssueDialog({
       return;
     }
 
+    // Mandatory image validation
+    if (images.length === 0) {
+      setError("Please upload at least one image of the issue");
+      return;
+    }
+
     try {
-      const imageBlobs: ExternalBlob[] = [];
-
-      for (const image of images) {
-        const arrayBuffer = await image.file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const blob = ExternalBlob.fromBytes(uint8Array).withUploadProgress(
-          (percentage) => {
-            setImages((prev) =>
-              prev.map((img) =>
-                img.id === image.id
-                  ? { ...img, uploadProgress: percentage }
-                  : img,
-              ),
-            );
-          },
-        );
-        imageBlobs.push(blob);
-      }
-
       const submissionId = `submission-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
       const location =
@@ -199,10 +189,6 @@ export default function ReportIssueDialog({
       const address =
         street || city || zipCode ? { street, city, zipCode } : undefined;
 
-      // Use a demo principal derived from session name
-      const { Principal } = await import("@dfinity/principal");
-      const creatorPrincipal = Principal.anonymous();
-
       await createIssue.mutateAsync({
         id: submissionId,
         title: title.trim(),
@@ -212,19 +198,12 @@ export default function ReportIssueDialog({
         status: Status.open,
         location,
         address,
-        createdBy: creatorPrincipal,
-        createdAt: BigInt(Date.now() * 1000000),
-        updatedAt: BigInt(Date.now() * 1000000),
+        createdBy: DEMO_PRINCIPAL,
+        createdAt: BigInt(Date.now()) * BigInt(1_000_000),
+        updatedAt: BigInt(Date.now()) * BigInt(1_000_000),
         attachments: [],
         assignedStaff: undefined,
       });
-
-      if (imageBlobs.length > 0) {
-        await uploadAttachments.mutateAsync({
-          submissionId,
-          blobs: imageBlobs,
-        });
-      }
 
       // Reset form
       setTitle("");
@@ -235,11 +214,14 @@ export default function ReportIssueDialog({
       setZipCode("");
       setLatitude("");
       setLongitude("");
+      for (const img of images) URL.revokeObjectURL(img.preview);
       setImages([]);
       setLocationError(null);
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.message || "Failed to submit issue");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to submit issue";
+      setError(message);
     }
   };
 
@@ -302,16 +284,41 @@ export default function ReportIssueDialog({
             />
           </div>
 
+          {/* Mandatory image upload */}
           <div className="space-y-2">
-            <Label htmlFor="images">Photos (optional)</Label>
-            <Input
-              id="images"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageSelect}
-              disabled={isSubmitting}
-            />
+            <Label htmlFor="images" className="flex items-center gap-1">
+              Photos
+              <span className="text-destructive ml-0.5">*</span>
+              <span className="text-xs text-muted-foreground font-normal ml-1">
+                (at least 1 required)
+              </span>
+            </Label>
+            <label
+              htmlFor="images"
+              className={[
+                "flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-sm transition-colors",
+                images.length === 0 &&
+                error === "Please upload at least one image of the issue"
+                  ? "border-destructive bg-destructive/5"
+                  : "border-border hover:border-primary/50 hover:bg-muted/40",
+              ].join(" ")}
+            >
+              <ImagePlus className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">
+                {images.length > 0
+                  ? `${images.length} photo${images.length > 1 ? "s" : ""} selected — click to add more`
+                  : "Click to upload photos of the issue"}
+              </span>
+              <Input
+                id="images"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                disabled={isSubmitting}
+                className="sr-only"
+              />
+            </label>
             {images.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mt-2">
                 {images.map((image) => (
@@ -324,6 +331,7 @@ export default function ReportIssueDialog({
                     <button
                       type="button"
                       onClick={() => removeImage(image.id)}
+                      aria-label="Remove image"
                       className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-all duration-300 group-hover:opacity-100 hover:scale-110"
                       disabled={isSubmitting}
                     >
@@ -440,8 +448,13 @@ export default function ReportIssueDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || images.length === 0}
               className="transition-all duration-300 hover:scale-105"
+              title={
+                images.length === 0
+                  ? "Please upload at least one photo"
+                  : undefined
+              }
             >
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -15,8 +15,11 @@ import { LOGIN_MODAL_EVENT } from "../utils/openLoginModal";
 
 type DemoRole = "public" | "municipal";
 
-// Password for municipal staff access
-const MUNICIPAL_PASSWORD = "civic@2024";
+// Passwords for both user types
+const PASSWORDS: Record<DemoRole, string> = {
+  public: "public@2024",
+  municipal: "civic@2024",
+};
 
 export default function LoginSelectionModal() {
   const [showModal, setShowModal] = useState(false);
@@ -39,7 +42,9 @@ export default function LoginSelectionModal() {
     };
 
     if (typeof window !== "undefined") {
-      (window as any).openLoginModal = openModal;
+      (
+        window as Window & { openLoginModal?: (role?: DemoRole) => void }
+      ).openLoginModal = openModal;
     }
 
     const handleEvent = (e: Event) => {
@@ -50,7 +55,9 @@ export default function LoginSelectionModal() {
 
     return () => {
       if (typeof window !== "undefined") {
-        (window as any).openLoginModal = undefined;
+        (
+          window as Window & { openLoginModal?: (role?: DemoRole) => void }
+        ).openLoginModal = undefined;
       }
       window.removeEventListener(LOGIN_MODAL_EVENT, handleEvent);
     };
@@ -63,15 +70,17 @@ export default function LoginSelectionModal() {
       setNameError("Please enter your name to continue.");
       return;
     }
-    if (selectedRole === "municipal") {
-      if (!password) {
-        setPasswordError("Password is required for Municipal Staff.");
-        return;
-      }
-      if (password !== MUNICIPAL_PASSWORD) {
-        setPasswordError("Incorrect password. Please try again.");
-        return;
-      }
+    if (!password) {
+      setPasswordError(
+        selectedRole === "municipal"
+          ? "Password is required for Municipal Staff."
+          : "Password is required to continue.",
+      );
+      return;
+    }
+    if (password !== PASSWORDS[selectedRole]) {
+      setPasswordError("Incorrect password. Please try again.");
+      return;
     }
     setDemoSession({ name: trimmed, role: selectedRole });
     setShowModal(false);
@@ -212,45 +221,54 @@ export default function LoginSelectionModal() {
             </div>
           </div>
 
-          {/* Password field — only shown for Municipal Staff */}
-          {selectedRole === "municipal" && (
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="municipal-password"
-                className="text-sm font-medium"
+          {/* Password field — shown for both roles */}
+          <div className="space-y-1.5">
+            <Label htmlFor="user-password" className="text-sm font-medium">
+              {selectedRole === "municipal"
+                ? "Staff Password"
+                : "Access Password"}
+            </Label>
+            <div className="relative">
+              <Input
+                id="user-password"
+                type={showPassword ? "text" : "password"}
+                placeholder={
+                  selectedRole === "municipal"
+                    ? "Enter staff password"
+                    : "Enter access password"
+                }
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) setPasswordError("");
+                }}
+                className="h-11 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                tabIndex={-1}
               >
-                Staff Password
-              </Label>
-              <div className="relative">
-                <Input
-                  id="municipal-password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter staff password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (passwordError) setPasswordError("");
-                  }}
-                  className="h-11 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-              {passwordError && (
-                <p className="text-xs text-destructive">{passwordError}</p>
-              )}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
-          )}
+            {passwordError && (
+              <p className="text-xs text-destructive">{passwordError}</p>
+            )}
+            {!passwordError && (
+              <p className="text-xs text-muted-foreground">
+                {selectedRole === "municipal"
+                  ? "Use: civic@2024"
+                  : "Use: public@2024"}
+              </p>
+            )}
+          </div>
 
           {/* Submit */}
           <Button
@@ -261,7 +279,7 @@ export default function LoginSelectionModal() {
             <Zap className="h-4 w-4" />
             {selectedRole === "municipal"
               ? "Login as Staff"
-              : "Login Instantly"}
+              : "Login as Citizen"}
           </Button>
         </form>
       </DialogContent>

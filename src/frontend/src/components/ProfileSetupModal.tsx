@@ -10,11 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Loader2, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { UserProfile } from "../backend";
 import {
   useGetCallerUserProfile,
   useSaveCallerUserProfile,
 } from "../hooks/useQueries";
+import type { UserProfile } from "../types/domain";
 
 export default function ProfileSetupModal() {
   const [name, setName] = useState("");
@@ -33,8 +33,14 @@ export default function ProfileSetupModal() {
     }
 
     // Pre-fill with existing profile data if available
-    if (existingProfile) {
-      setIsMunicipalStaff(existingProfile.isMunicipalStaff);
+    if (
+      existingProfile &&
+      typeof existingProfile === "object" &&
+      "isMunicipalStaff" in existingProfile
+    ) {
+      setIsMunicipalStaff(
+        (existingProfile as { isMunicipalStaff: boolean }).isMunicipalStaff,
+      );
     }
   }, [existingProfile]);
 
@@ -48,7 +54,6 @@ export default function ProfileSetupModal() {
     const profile: UserProfile = {
       name: name.trim(),
       email: email.trim(),
-      phone: phone.trim() || undefined,
       isMunicipalStaff,
     };
 

@@ -22,9 +22,6 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import type { Submission } from "../backend";
-import { Category, Status, Variant_upvote_downvote } from "../backend";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddComment,
   useAddVote,
@@ -33,6 +30,9 @@ import {
   useGetVoteCount,
   useRemoveVote,
 } from "../hooks/useQueries";
+import type { Submission, Variant_upvote_downvote } from "../types/domain";
+import { Category, Status } from "../types/domain";
+import { getDemoSession } from "../utils/demoSession";
 
 interface IssueDetailDialogProps {
   issue: Submission;
@@ -45,7 +45,7 @@ const statusColors: Record<Status, string> = {
   [Status.inProgress]: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
   [Status.resolved]: "bg-green-500/10 text-green-700 dark:text-green-400",
   [Status.reopened]: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
-  [Status.closed]: "bg-gray-500/10 text-gray-700 dark:text-gray-400",
+  [Status.closed]: "bg-muted-foreground/10 text-muted-foreground",
 };
 
 const statusLabels: Record<Status, string> = {
@@ -68,7 +68,9 @@ export default function IssueDetailDialog({
   open,
   onOpenChange,
 }: IssueDetailDialogProps) {
-  const { identity } = useInternetIdentity();
+  const session = getDemoSession();
+  const isLoggedIn = !!session;
+
   const { data: comments = [] } = useGetComments(issue.id);
   const { data: voteCount } = useGetVoteCount(issue.id);
   const { data: statusHistory = [] } = useGetStatusHistory(issue.id);
@@ -81,23 +83,12 @@ export default function IssueDetailDialog({
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
     null,
   );
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [_loadingImages, setLoadingImages] = useState(true);
+
+  // attachments is string[] (URLs or data URLs)
+  const imageUrls: string[] = issue.attachments ?? [];
 
   const upvotes = Number(voteCount?.upvotes || 0);
   const downvotes = Number(voteCount?.downvotes || 0);
-
-  // Load image URLs when dialog opens
-  useState(() => {
-    if (issue.attachments && issue.attachments.length > 0) {
-      setLoadingImages(true);
-      const urls = issue.attachments.map((blob) => blob.getDirectURL());
-      setImageUrls(urls);
-      setLoadingImages(false);
-    } else {
-      setLoadingImages(false);
-    }
-  });
 
   const formatDate = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) / 1000000);
@@ -115,23 +106,17 @@ export default function IssueDetailDialog({
     const commentId = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     addComment.mutate(
       { submissionId: issue.id, content: commentText.trim(), commentId },
-      {
-        onSuccess: () => setCommentText(""),
-      },
+      { onSuccess: () => setCommentText("") },
     );
   };
 
   const handleVote = (voteType: Variant_upvote_downvote) => {
     if (hasVoted) {
-      removeVote.mutate(issue.id, {
-        onSuccess: () => setHasVoted(false),
-      });
+      removeVote.mutate(issue.id, { onSuccess: () => setHasVoted(false) });
     } else {
       addVote.mutate(
         { submissionId: issue.id, voteType },
-        {
-          onSuccess: () => setHasVoted(true),
-        },
+        { onSuccess: () => setHasVoted(true) },
       );
     }
   };
@@ -232,8 +217,8 @@ export default function IssueDetailDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleVote(Variant_upvote_downvote.upvote)}
-                  disabled={!identity}
+                  onClick={() => handleVote("upvote")}
+                  disabled={!isLoggedIn}
                   className="transition-all duration-300 hover:scale-105"
                 >
                   <ThumbsUp className="mr-2 h-4 w-4" />
@@ -242,8 +227,8 @@ export default function IssueDetailDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleVote(Variant_upvote_downvote.downvote)}
-                  disabled={!identity}
+                  onClick={() => handleVote("downvote")}
+                  disabled={!isLoggedIn}
                   className="transition-all duration-300 hover:scale-105"
                 >
                   <ThumbsDown className="mr-2 h-4 w-4" />
@@ -260,16 +245,15 @@ export default function IssueDetailDialog({
                   <div className="space-y-2">
                     {statusHistory.map((update) => (
                       <div
-                        key={`${String(update.timestamp)}-${update.previousStatus}-${update.newStatus}`}
+                        key={update.id}
                         className="rounded-lg border bg-muted/30 p-3 text-sm transition-all duration-300 hover:bg-muted/50"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-medium">
-                            {statusLabels[update.previousStatus]} →{" "}
-                            {statusLabels[update.newStatus]}
+                          <span className="font-medium capitalize">
+                            {update.status}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatDate(update.timestamp)}
+                            {formatDate(update.updatedAt)}
                           </span>
                         </div>
                         {update.notes && (
@@ -292,7 +276,7 @@ export default function IssueDetailDialog({
                   Comments ({comments.length})
                 </h3>
 
-                {identity && (
+                {isLoggedIn && (
                   <div className="space-y-2">
                     <Textarea
                       placeholder="Add a comment..."
@@ -328,10 +312,10 @@ export default function IssueDetailDialog({
                         <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
                           <User className="h-3 w-3" />
                           <span>
-                            {comment.userId.toString().slice(0, 8)}...
+                            {comment.author.toString().slice(0, 8)}...
                           </span>
                           <span>•</span>
-                          <span>{formatDate(comment.timestamp)}</span>
+                          <span>{formatDate(comment.createdAt)}</span>
                         </div>
                         <p className="text-sm">{comment.content}</p>
                       </div>
@@ -352,6 +336,7 @@ export default function IssueDetailDialog({
               <button
                 type="button"
                 onClick={() => setSelectedImageIndex(null)}
+                aria-label="Close image"
                 className="absolute right-4 top-4 z-10 rounded-full bg-background/80 p-2 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-background"
               >
                 <X className="h-4 w-4" />

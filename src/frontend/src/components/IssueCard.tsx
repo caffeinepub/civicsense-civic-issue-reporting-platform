@@ -1,9 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, MapPin, ThumbsUp } from "lucide-react";
-import type { Submission } from "../backend";
-import { Category, Status } from "../backend";
 import { useGetVoteCount } from "../hooks/useQueries";
+import type { Submission } from "../types/domain";
+import { Category, Status } from "../types/domain";
 
 interface IssueCardProps {
   issue: Submission;

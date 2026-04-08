@@ -7,14 +7,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowRight, MapPin, Search } from "lucide-react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { openLoginModal } from "../utils/openLoginModal";
 import CategoryStatsCards from "./CategoryStatsCards";
 
 export default function HeroSection() {
-  const { loginStatus } = useInternetIdentity();
-  const isLoggingIn = loginStatus === "logging-in";
-
   const handleReportNow = () => {
     openLoginModal();
   };
@@ -86,10 +82,9 @@ export default function HeroSection() {
               <button
                 type="button"
                 onClick={handleReportNow}
-                disabled={isLoggingIn}
-                className="inline-flex items-center gap-2 rounded-xl bg-orange px-8 py-4 text-lg font-semibold text-white shadow-md transition-all hover:bg-orange/90 hover:shadow-lg active:scale-95 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-orange px-8 py-4 text-lg font-semibold text-white shadow-md transition-all hover:bg-orange/90 hover:shadow-lg active:scale-95"
               >
-                {isLoggingIn ? "Logging in..." : "Report Now"}
+                Report Now
                 <ArrowRight className="h-5 w-5" />
               </button>
             </div>

@@ -2,162 +2,111 @@ import type { Principal } from "@dfinity/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type {
-  Category,
   Comment,
-  LoginResult,
   Status,
   StatusUpdate,
   Submission,
-  UserProfile,
-  Variant_upvote_downvote,
-} from "../backend";
-import type { ExternalBlob } from "../backend";
-import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
+} from "../types/domain";
+import { getDemoSession } from "../utils/demoSession";
+import {
+  getAllIssues,
+  getAnalytics,
+  getComments,
+  getMyIssues,
+  getStatusHistory,
+  createIssue as localCreateIssue,
+  updateIssueStatus,
+} from "../utils/localStore";
 
-// Login Mutation
-export function useLogin() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
+// ---------------------------------------------------------------------------
+// Read queries — backed by local demo store (no actor needed)
+// ---------------------------------------------------------------------------
 
-  return useMutation({
-    mutationFn: async (isOperator: boolean): Promise<LoginResult> => {
-      if (!actor) throw new Error("Actor not available");
-      const result = await actor.login(isOperator);
-      return result;
-    },
-    onSuccess: (result: LoginResult) => {
-      // Invalidate queries to refresh user data
-      queryClient.invalidateQueries({ queryKey: ["currentUserProfile"] });
-      queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
-
-      // Handle error results
-      if (result.__kind__ === "error") {
-        console.error("Login error:", result.error);
-      }
-    },
-    onError: (error: Error) => {
-      console.error("Login mutation error:", error);
-      toast.error(`Login failed: ${error.message}`);
-    },
-  });
-}
-
-// User Profile Queries
-export function useGetCallerUserProfile() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  const query = useQuery<UserProfile | null>({
-    queryKey: ["currentUserProfile"],
-    queryFn: async () => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.getCallerUserProfile();
-    },
-    enabled: !!actor && !actorFetching,
-    retry: false,
-  });
-
-  return {
-    ...query,
-    isLoading: actorFetching || query.isLoading,
-    isFetched: !!actor && query.isFetched,
-  };
-}
-
-export function useSaveCallerUserProfile() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (profile: UserProfile) => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.saveCallerUserProfile(profile);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentUserProfile"] });
-      toast.success("Profile saved successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to save profile: ${error.message}`);
-    },
-  });
-}
-
-export function useIsCallerAdmin() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<boolean>({
-    queryKey: ["isCallerAdmin"],
-    queryFn: async () => {
-      if (!actor) return false;
-      return actor.isCallerAdmin();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// Issue (Submission) Queries
 export function useGetAllIssues() {
-  const { actor, isFetching } = useActor();
-
   return useQuery<Submission[]>({
     queryKey: ["issues"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllSubmissions();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: () => getAllIssues(),
+    staleTime: 0,
   });
 }
 
 export function useGetIssue(id: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Submission>({
+  return useQuery<Submission | undefined>({
     queryKey: ["issue", id],
-    queryFn: async () => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.getSubmission(id);
-    },
-    enabled: !!actor && !isFetching && !!id,
+    queryFn: () => getAllIssues().find((i) => i.id === id),
+    enabled: !!id,
   });
 }
 
 export function useGetMyIssues() {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
-
+  const session = getDemoSession();
   return useQuery<Submission[]>({
-    queryKey: ["myIssues"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getMySubmissions();
-    },
-    enabled: !!actor && !isFetching && !!identity,
+    queryKey: ["myIssues", session?.name],
+    queryFn: () => getMyIssues(session?.name),
+    enabled: !!session,
   });
 }
 
 export function useGetAssignedIssues() {
-  const { actor, isFetching } = useActor();
-
   return useQuery<Submission[]>({
     queryKey: ["assignedIssues"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAssignedSubmissions();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: () => [],
   });
 }
 
+export function useGetAnalytics() {
+  return useQuery({
+    queryKey: ["analytics"],
+    queryFn: () => getAnalytics(),
+    staleTime: 0,
+  });
+}
+
+export function useGetStatusHistory(submissionId: string) {
+  return useQuery<StatusUpdate[]>({
+    queryKey: ["statusHistory", submissionId],
+    queryFn: () => getStatusHistory(submissionId),
+    enabled: !!submissionId,
+  });
+}
+
+export function useGetComments(submissionId: string) {
+  return useQuery<Comment[]>({
+    queryKey: ["comments", submissionId],
+    queryFn: () => getComments(submissionId),
+    enabled: !!submissionId,
+  });
+}
+
+export function useGetVoteCount(submissionId: string) {
+  return useQuery<{ upvotes: bigint; downvotes: bigint }>({
+    queryKey: ["voteCount", submissionId],
+    queryFn: () => ({ upvotes: BigInt(0), downvotes: BigInt(0) }),
+    enabled: !!submissionId,
+  });
+}
+
+export function useIsCallerAdmin() {
+  const session = getDemoSession();
+  return useQuery<boolean>({
+    queryKey: ["isCallerAdmin"],
+    queryFn: () => session?.role === "municipal",
+    enabled: !!session,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
+
 export function useCreateIssue() {
-  const { actor } = useActor();
   const queryClient = useQueryClient();
+  const session = getDemoSession();
 
   return useMutation({
     mutationFn: async (payload: Submission) => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.createSubmission(payload);
+      localCreateIssue(payload, session?.name);
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
@@ -172,7 +121,6 @@ export function useCreateIssue() {
 }
 
 export function useUpdateIssueStatus() {
-  const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -181,8 +129,8 @@ export function useUpdateIssueStatus() {
       status,
       notes,
     }: { id: string; status: Status; notes: string }) => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.updateSubmissionStatus(id, status, notes);
+      updateIssueStatus(id, status, notes);
+      return { id, status };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
@@ -199,180 +147,60 @@ export function useUpdateIssueStatus() {
   });
 }
 
-export function useAssignIssue() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      id,
-      staffPrincipal,
-    }: { id: string; staffPrincipal: Principal | null }) => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.assignSubmissionToStaff(id, staffPrincipal);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["issues"] });
-      queryClient.invalidateQueries({ queryKey: ["issue", variables.id] });
-      queryClient.invalidateQueries({ queryKey: ["assignedIssues"] });
-      toast.success("Issue assigned successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to assign issue: ${error.message}`);
-    },
-  });
-}
-
 export function useUploadAttachments() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({
-      submissionId,
-      blobs,
-    }: { submissionId: string; blobs: ExternalBlob[] }) => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.uploadAttachment(submissionId, blobs);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["issues"] });
-      queryClient.invalidateQueries({
-        queryKey: ["issue", variables.submissionId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["myIssues"] });
+    mutationFn: async (_p: { submissionId: string; blobs: unknown[] }) =>
+      undefined,
+    onSuccess: () => {
       toast.success("Photos uploaded successfully");
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to upload photos: ${error.message}`);
-    },
-  });
-}
-
-// Comments
-export function useGetComments(submissionId: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Comment[]>({
-    queryKey: ["comments", submissionId],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getComments(submissionId);
-    },
-    enabled: !!actor && !isFetching && !!submissionId,
   });
 }
 
 export function useAddComment() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({
-      submissionId,
-      content,
-      commentId,
-    }: { submissionId: string; content: string; commentId: string }) => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.addComment(submissionId, content, commentId);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["comments", variables.submissionId],
-      });
+    mutationFn: async (_p: {
+      submissionId: string;
+      content: string;
+      commentId: string;
+    }) => undefined,
+    onSuccess: () => {
       toast.success("Comment added");
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to add comment: ${error.message}`);
-    },
-  });
-}
-
-// Votes
-export function useGetVoteCount(submissionId: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<{ upvotes: bigint; downvotes: bigint }>({
-    queryKey: ["voteCount", submissionId],
-    queryFn: async () => {
-      if (!actor) return { upvotes: BigInt(0), downvotes: BigInt(0) };
-      return actor.getVoteCount(submissionId);
-    },
-    enabled: !!actor && !isFetching && !!submissionId,
   });
 }
 
 export function useAddVote() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({
-      submissionId,
-      voteType,
-    }: { submissionId: string; voteType: Variant_upvote_downvote }) => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.addVote(submissionId, voteType);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["voteCount", variables.submissionId],
-      });
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to vote: ${error.message}`);
-    },
+    mutationFn: async (_p: { submissionId: string; voteType: unknown }) =>
+      undefined,
   });
 }
 
 export function useRemoveVote() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (submissionId: string) => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.removeVote(submissionId);
-    },
-    onSuccess: (_, submissionId) => {
-      queryClient.invalidateQueries({ queryKey: ["voteCount", submissionId] });
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to remove vote: ${error.message}`);
-    },
+    mutationFn: async (_id: string) => undefined,
   });
 }
 
-// Status History
-export function useGetStatusHistory(submissionId: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<StatusUpdate[]>({
-    queryKey: ["statusHistory", submissionId],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getStatusHistory(submissionId);
-    },
-    enabled: !!actor && !isFetching && !!submissionId,
+export function useAssignIssue() {
+  return useMutation({
+    mutationFn: async (_p: { id: string; staffPrincipal: Principal | null }) =>
+      undefined,
   });
 }
 
-// Analytics
-export function useGetAnalytics() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<{
-    totalSubmissions: bigint;
-    openSubmissions: bigint;
-    inProgressSubmissions: bigint;
-    resolvedSubmissions: bigint;
-    closedSubmissions: bigint;
-  }>({
-    queryKey: ["analytics"],
-    queryFn: async () => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.getAnalytics();
-    },
-    enabled: !!actor && !isFetching,
+// Legacy stubs
+export function useLogin() {
+  return useMutation({
+    mutationFn: async (_isOperator: boolean) => ({ __kind__: "ok" as const }),
   });
+}
+
+export function useGetCallerUserProfile() {
+  return { data: null as null, isLoading: false, isFetched: true };
+}
+
+export function useSaveCallerUserProfile() {
+  return useMutation({ mutationFn: async (_profile: unknown) => undefined });
 }

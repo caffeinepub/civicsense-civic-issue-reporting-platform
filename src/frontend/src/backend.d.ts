@@ -14,6 +14,11 @@ export class ExternalBlob {
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
     withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
+export interface Address {
+    street: string;
+    city: string;
+    zipCode: string;
+}
 export type Time = bigint;
 export interface Comment {
     id: string;
@@ -30,11 +35,6 @@ export interface LoginSuccess {
 export interface GeoCoordinates {
     latitude: number;
     longitude: number;
-}
-export interface Address {
-    street: string;
-    city: string;
-    zipCode: string;
 }
 export interface StatusUpdate {
     updatedBy: Principal;
@@ -141,7 +141,8 @@ export interface backendInterface {
         downvotes: bigint;
     }>;
     isCallerAdmin(): Promise<boolean>;
-    login(isOperator: boolean): Promise<LoginResult>;
+    login(isOperator: boolean, password: string): Promise<LoginResult>;
+    loginWithName(name: string, isOperator: boolean, password: string): Promise<LoginResult>;
     removeVote(submissionId: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setMunicipalStaffStatus(user: Principal, isStaff: boolean): Promise<void>;

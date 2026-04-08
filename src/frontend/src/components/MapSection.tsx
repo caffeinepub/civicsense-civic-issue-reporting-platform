@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin } from "lucide-react";
-import { Status } from "../backend";
 import { useGetAllIssues } from "../hooks/useQueries";
+import { Status } from "../types/domain";
 
 const statusColors: Record<Status, string> = {
   [Status.open]: "bg-blue-500",

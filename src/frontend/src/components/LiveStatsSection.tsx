@@ -1,7 +1,7 @@
 import { CheckCircle2, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Status } from "../backend";
 import { useGetAllIssues } from "../hooks/useQueries";
+import { Status } from "../types/domain";
 
 export default function LiveStatsSection() {
   const { data: allIssues = [] } = useGetAllIssues();

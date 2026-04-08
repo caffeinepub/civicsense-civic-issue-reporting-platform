@@ -27,9 +27,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Edit, Loader2 } from "lucide-react";
 import { useState } from "react";
-import type { Submission } from "../backend";
-import { Category, Status } from "../backend";
 import { useUpdateIssueStatus } from "../hooks/useQueries";
+import type { Submission } from "../types/domain";
+import { Category, Status } from "../types/domain";
 
 interface IssueManagementTableProps {
   issues: Submission[];

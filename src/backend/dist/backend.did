@@ -1,0 +1,173 @@
+type _ImmutableObjectStorageRefillResult = 
+ record {
+   success: opt bool;
+   topped_up_amount: opt nat;
+ };
+type _ImmutableObjectStorageRefillInformation = record {
+                                                  proposed_top_up_amount:
+                                                   opt nat;};
+type _ImmutableObjectStorageCreateCertificateResult = 
+ record {
+   blob_hash: text;
+   method: text;
+ };
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = 
+ record {
+   email: text;
+   isMunicipalStaff: bool;
+   name: text;
+   phone: opt text;
+ };
+type Time = int;
+type Submission = 
+ record {
+   address: opt Address;
+   assignedStaff: opt principal;
+   attachments: vec ExternalBlob;
+   category: Category;
+   createdAt: Time;
+   createdBy: principal;
+   description: text;
+   id: text;
+   location: opt GeoCoordinates;
+   priority: Priority;
+   status: Status;
+   title: text;
+   updatedAt: Time;
+ };
+type StatusUpdate = 
+ record {
+   newStatus: Status;
+   notes: text;
+   previousStatus: Status;
+   submissionId: text;
+   timestamp: Time;
+   updatedBy: principal;
+ };
+type Status = 
+ variant {
+   closed;
+   inProgress;
+   open;
+   reopened;
+   resolved;
+ };
+type Priority = 
+ variant {
+   high;
+   low;
+   medium;
+ };
+type LoginSuccess = 
+ record {
+   isAuthenticated: bool;
+   isMunicipalOperator: bool;
+   redirectView: text;
+ };
+type LoginResult = 
+ variant {
+   error: LoginError;
+   success: LoginSuccess;
+ };
+type LoginErrorCode = 
+ variant {
+   internalError;
+   invalidCredentials;
+   unauthorized;
+ };
+type LoginError = 
+ record {
+   code: LoginErrorCode;
+   message: text;
+ };
+type GeoCoordinates = 
+ record {
+   latitude: float64;
+   longitude: float64;
+ };
+type ExternalBlob = blob;
+type Comment = 
+ record {
+   content: text;
+   id: text;
+   submissionId: text;
+   timestamp: Time;
+   userId: principal;
+ };
+type Category = 
+ variant {
+   other;
+   potholes;
+   streetlights;
+   waste;
+ };
+type Address = 
+ record {
+   city: text;
+   street: text;
+   zipCode: text;
+ };
+service : {
+  _immutableObjectStorageBlobsAreLive: (hashes: vec blob) -> (vec bool) query;
+  _immutableObjectStorageBlobsToDelete: () -> (vec blob) query;
+  _immutableObjectStorageConfirmBlobDeletion: (blobs: vec blob) -> ();
+  _immutableObjectStorageCreateCertificate: (blobHash: text) ->
+   (_ImmutableObjectStorageCreateCertificateResult);
+  _immutableObjectStorageRefillCashier: (refillInformation:
+   opt _ImmutableObjectStorageRefillInformation) ->
+   (_ImmutableObjectStorageRefillResult);
+  _immutableObjectStorageUpdateGatewayPrincipals: () -> ();
+  _initializeAccessControl: () -> ();
+  addComment: (submissionId: text, content: text, commentId: text) -> ();
+  addVote: (submissionId: text, voteType: variant {
+                                            downvote;
+                                            upvote;
+                                          }) -> ();
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  assignSubmissionToStaff: (id: text, staffPrincipal: opt principal) -> ();
+  createSubmission: (payload: Submission) -> (text);
+  deleteComment: (commentId: text) -> ();
+  deleteSubmission: (id: text) -> ();
+  getAllSubmissions: () -> (vec Submission) query;
+  getAnalytics: () ->
+   (record {
+      closedSubmissions: nat;
+      inProgressSubmissions: nat;
+      openSubmissions: nat;
+      resolvedSubmissions: nat;
+      totalSubmissions: nat;
+    }) query;
+  getAssignedSubmissions: () -> (vec Submission) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getComments: (submissionId: text) -> (vec Comment) query;
+  getMySubmissions: () -> (vec Submission) query;
+  getStatusHistory: (submissionId: text) -> (vec StatusUpdate) query;
+  getSubmission: (id: text) -> (Submission) query;
+  getSubmissionByCategory: (category: Category) -> (vec Submission) query;
+  getSubmissionVersions: (id: text) -> (vec text) query;
+  getSubmissionsByStatus: (status: Status) -> (vec Submission) query;
+  getSubmissionsSortedByUpvotes: () -> (vec Submission) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  getVoteCount: (submissionId: text) ->
+   (record {
+      downvotes: nat;
+      upvotes: nat;
+    }) query;
+  isCallerAdmin: () -> (bool) query;
+  login: (isOperator: bool, password: text) -> (LoginResult);
+  loginWithName: (name: text, isOperator: bool, password: text) ->
+   (LoginResult);
+  removeVote: (submissionId: text) -> ();
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  setMunicipalStaffStatus: (user: principal, isStaff: bool) -> ();
+  updateSubmission: (id: text, newPayload: Submission) -> ();
+  updateSubmissionStatus: (id: text, newStatus: Status, notes: text) -> ();
+  uploadAttachment: (submissionId: text, blobs: vec ExternalBlob) -> ();
+}

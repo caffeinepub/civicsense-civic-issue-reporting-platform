@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, CheckCircle2, Loader2, TrendingUp } from "lucide-react";
-import { Status } from "../backend";
 import { useGetAllIssues } from "../hooks/useQueries";
+import { Status } from "../types/domain";
 
 export default function StatisticsSection() {
   const { data: allIssues = [], isLoading } = useGetAllIssues();

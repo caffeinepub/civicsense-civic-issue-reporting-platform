@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Category, Status } from "../backend";
 import { useGetAllIssues } from "../hooks/useQueries";
+import { Category, Status } from "../types/domain";
 
 interface CategoryCardProps {
   icon: string;
