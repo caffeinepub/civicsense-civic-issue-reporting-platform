@@ -99,14 +99,24 @@ export function useIsCallerAdmin() {
 // Mutations
 // ---------------------------------------------------------------------------
 
+interface CreateIssuePayload {
+  submission: Submission;
+  imageDataUrls: string[];
+  videoDataUrls: string[];
+}
+
 export function useCreateIssue() {
   const queryClient = useQueryClient();
   const session = getDemoSession();
 
   return useMutation({
-    mutationFn: async (payload: Submission) => {
-      localCreateIssue(payload, session?.name);
-      return payload;
+    mutationFn: async ({
+      submission,
+      imageDataUrls,
+      videoDataUrls,
+    }: CreateIssuePayload) => {
+      localCreateIssue(submission, session?.name, imageDataUrls, videoDataUrls);
+      return submission;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });

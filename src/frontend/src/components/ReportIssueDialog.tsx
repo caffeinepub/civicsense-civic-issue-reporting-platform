@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ImagePlus, Loader2, MapPin, X } from "lucide-react";
+import { ImagePlus, Loader2, MapPin, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCreateIssue } from "../hooks/useQueries";
 import { Category, Priority, Status } from "../types/domain";
@@ -37,12 +37,27 @@ interface ImagePreview {
   uploadProgress: number;
 }
 
+interface VideoPreview {
+  file: File;
+  preview: string;
+}
+
 const categoryOptions: { value: Category; label: string }[] = [
   { value: Category.potholes, label: "Potholes" },
   { value: Category.streetlights, label: "Streetlights" },
   { value: Category.waste, label: "Waste Management" },
   { value: Category.other, label: "Other" },
 ];
+
+/** Convert a File to a data URL string */
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function ReportIssueDialog({
   open,
@@ -60,6 +75,7 @@ export default function ReportIssueDialog({
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [images, setImages] = useState<ImagePreview[]>([]);
+  const [video, setVideo] = useState<VideoPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -139,7 +155,6 @@ export default function ReportIssueDialog({
       uploadProgress: 0,
     }));
     setImages((prev) => [...prev, ...newImages]);
-    // Clear image error when user adds images
     if (error === "Please upload at least one image of the issue") {
       setError(null);
     }
@@ -148,11 +163,21 @@ export default function ReportIssueDialog({
   const removeImage = (id: string) => {
     setImages((prev) => {
       const image = prev.find((img) => img.id === id);
-      if (image) {
-        URL.revokeObjectURL(image.preview);
-      }
+      if (image) URL.revokeObjectURL(image.preview);
       return prev.filter((img) => img.id !== id);
     });
+  };
+
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (video) URL.revokeObjectURL(video.preview);
+    setVideo({ file, preview: URL.createObjectURL(file) });
+  };
+
+  const removeVideo = () => {
+    if (video) URL.revokeObjectURL(video.preview);
+    setVideo(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,13 +194,24 @@ export default function ReportIssueDialog({
       return;
     }
 
-    // Mandatory image validation
     if (images.length === 0) {
       setError("Please upload at least one image of the issue");
       return;
     }
 
     try {
+      // Convert all image files to data URLs for persistence
+      const imageDataUrls = await Promise.all(
+        images.map((img) => fileToDataUrl(img.file)),
+      );
+
+      // Convert video file to data URL if present
+      const videoDataUrls: string[] = [];
+      if (video) {
+        const videoDataUrl = await fileToDataUrl(video.file);
+        videoDataUrls.push(videoDataUrl);
+      }
+
       const submissionId = `submission-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
       const location =
@@ -190,19 +226,24 @@ export default function ReportIssueDialog({
         street || city || zipCode ? { street, city, zipCode } : undefined;
 
       await createIssue.mutateAsync({
-        id: submissionId,
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        priority: Priority.medium,
-        status: Status.open,
-        location,
-        address,
-        createdBy: DEMO_PRINCIPAL,
-        createdAt: BigInt(Date.now()) * BigInt(1_000_000),
-        updatedAt: BigInt(Date.now()) * BigInt(1_000_000),
-        attachments: [],
-        assignedStaff: undefined,
+        submission: {
+          id: submissionId,
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          priority: Priority.medium,
+          status: Status.open,
+          location,
+          address,
+          createdBy: DEMO_PRINCIPAL,
+          createdAt: BigInt(Date.now()) * BigInt(1_000_000),
+          updatedAt: BigInt(Date.now()) * BigInt(1_000_000),
+          attachments: imageDataUrls,
+          videos: videoDataUrls,
+          assignedStaff: undefined,
+        },
+        imageDataUrls,
+        videoDataUrls,
       });
 
       // Reset form
@@ -216,6 +257,8 @@ export default function ReportIssueDialog({
       setLongitude("");
       for (const img of images) URL.revokeObjectURL(img.preview);
       setImages([]);
+      if (video) URL.revokeObjectURL(video.preview);
+      setVideo(null);
       setLocationError(null);
       onOpenChange(false);
     } catch (err: unknown) {
@@ -347,6 +390,58 @@ export default function ReportIssueDialog({
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Optional video upload */}
+          <div className="space-y-2">
+            <Label htmlFor="video" className="flex items-center gap-1">
+              <Video className="h-4 w-4" />
+              Video
+              <span className="text-xs text-muted-foreground font-normal ml-1">
+                (optional)
+              </span>
+            </Label>
+            {!video ? (
+              <label
+                htmlFor="video"
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-4 py-3 text-sm transition-colors hover:border-primary/50 hover:bg-muted/40"
+              >
+                <Video className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  Click to upload a video of the issue (optional)
+                </span>
+                <Input
+                  id="video"
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoSelect}
+                  disabled={isSubmitting}
+                  className="sr-only"
+                />
+              </label>
+            ) : (
+              <div className="relative rounded-lg border bg-muted/30 overflow-hidden">
+                <video
+                  src={video.preview}
+                  controls
+                  className="w-full max-h-48 object-contain"
+                >
+                  <track kind="captions" />
+                </video>
+                <button
+                  type="button"
+                  onClick={removeVideo}
+                  aria-label="Remove video"
+                  disabled={isSubmitting}
+                  className="absolute right-2 top-2 rounded-full bg-destructive p-1.5 text-destructive-foreground transition-all duration-200 hover:scale-110"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                <p className="text-xs text-muted-foreground px-3 py-1.5 truncate">
+                  {video.file.name}
+                </p>
               </div>
             )}
           </div>

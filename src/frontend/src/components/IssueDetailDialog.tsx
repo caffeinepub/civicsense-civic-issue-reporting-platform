@@ -19,6 +19,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   User,
+  Video,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -86,6 +87,7 @@ export default function IssueDetailDialog({
 
   // attachments is string[] (URLs or data URLs)
   const imageUrls: string[] = issue.attachments ?? [];
+  const videoUrls: string[] = issue.videos ?? [];
 
   const upvotes = Number(voteCount?.upvotes || 0);
   const downvotes = Number(voteCount?.downvotes || 0);
@@ -181,11 +183,37 @@ export default function IssueDetailDialog({
                         >
                           <img
                             src={url}
-                            alt={`Issue ${index + 1}`}
+                            alt={`Attachment ${index + 1}`}
                             loading="lazy"
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                           />
                         </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Video Gallery */}
+                {videoUrls.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium flex items-center gap-1.5">
+                      <Video className="h-4 w-4" />
+                      Videos ({videoUrls.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {videoUrls.map((url, index) => (
+                        <div
+                          key={`${url.slice(0, 20)}-${index}`}
+                          className="rounded-lg border bg-muted/30 overflow-hidden"
+                        >
+                          <video
+                            src={url}
+                            controls
+                            className="w-full max-h-56 object-contain"
+                          >
+                            <track kind="captions" />
+                          </video>
+                        </div>
                       ))}
                     </div>
                   </div>

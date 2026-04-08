@@ -41,6 +41,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 14 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 10 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_2",
@@ -61,6 +62,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 3 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 2 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_3",
@@ -81,6 +83,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 10 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 5 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_4",
@@ -101,6 +104,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 7 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 6 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_5",
@@ -121,6 +125,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 5 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 3 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_6",
@@ -141,6 +146,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 2 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 1 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_7",
@@ -161,6 +167,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 8 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 4 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_8",
@@ -181,6 +188,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 5 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 4 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_9",
@@ -201,6 +209,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 6 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 3 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_10",
@@ -221,6 +230,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 9 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 2 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_11",
@@ -237,6 +247,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 1 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 1 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
   {
     id: "seed_12",
@@ -257,6 +268,7 @@ const SEED_ISSUES: Submission[] = [
     createdAt: BigInt(Date.now() - 10 * 86400000) * BigInt(1_000_000),
     updatedAt: BigInt(Date.now() - 9 * 86400000) * BigInt(1_000_000),
     attachments: [],
+    videos: [],
   },
 ];
 
@@ -293,7 +305,12 @@ function loadIssues(): Submission[] {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return [];
-    return deserializeIssues(raw);
+    const issues = deserializeIssues(raw);
+    // Backfill videos field for issues saved before this field existed
+    return issues.map((issue) => ({
+      ...issue,
+      videos: issue.videos ?? [],
+    }));
   } catch {
     return [];
   }
@@ -364,10 +381,26 @@ export function registerUserIssue(name: string, id: string): void {
   }
 }
 
-export function createIssue(issue: Submission, submittedByName?: string): void {
+export function createIssue(
+  issue: Submission,
+  submittedByName?: string,
+  imageDataUrls?: string[],
+  videoDataUrls?: string[],
+): void {
   ensureSeeded();
   const issues = loadIssues();
-  issues.unshift(issue);
+  const issueWithMedia: Submission = {
+    ...issue,
+    attachments:
+      imageDataUrls && imageDataUrls.length > 0
+        ? imageDataUrls
+        : issue.attachments,
+    videos:
+      videoDataUrls && videoDataUrls.length > 0
+        ? videoDataUrls
+        : (issue.videos ?? []),
+  };
+  issues.unshift(issueWithMedia);
   saveIssues(issues);
   if (submittedByName) {
     registerUserIssue(submittedByName, issue.id);

@@ -58,7 +58,8 @@ export interface Submission {
   createdBy: Principal;
   createdAt: bigint;
   updatedAt: bigint;
-  attachments: string[];
+  attachments: string[]; // image data URLs
+  videos: string[]; // video data URLs (optional, may be empty)
   assignedStaff?: Principal;
 }
 
